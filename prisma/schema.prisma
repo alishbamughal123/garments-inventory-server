@@ -7,6 +7,145 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id              String                 @id @default(uuid())
+  name            String
+  email           String                 @unique
+  passwordHash    String
+  role            UserRole               @default(STAFF)
+  isActive        Boolean                @default(true)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  transactions    InventoryTransaction[]
+  purchaseBatches PurchaseBatch[]
+  returns         Return[]
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Supplier {
+  id              String          @id @default(uuid())
+  supplierName    String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  purchaseBatches PurchaseBatch[]
+}
+
+model Product {
+  id            String                 @id @default(uuid())
+  sku           String                 @unique
+  productName   String
+  brand         String?
+  color         String
+  size          String
+  fabric        String?
+  purchasePrice Decimal                @db.Decimal(10, 2)
+  salePrice     Decimal                @db.Decimal(10, 2)
+  stockQuantity Int                    @default(0)
+  minStockAlert Int                    @default(5)
+  imageUrl      String?
+  description   String?
+  isActive      Boolean                @default(true)
+  categoryId    String
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  barcodes      Barcode[]
+  transactions  InventoryTransaction[]
+  category      Category               @relation(fields: [categoryId], references: [id])
+  returns       Return[]
+saleItems SaleItem[]
+
+  @@index([sku])
+  @@index([productName])
+}
+
+model Barcode {
+  id            String        @id @default(uuid())
+  barcodeValue  String        @unique
+  barcodeType   BarcodeType
+  barcodeSource BarcodeSource
+  isPrimary     Boolean       @default(false)
+  productId     String
+  createdAt     DateTime      @default(now())
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([barcodeValue])
+}
+
+model PurchaseBatch {
+  id            String   @id @default(uuid())
+  batchNumber   String   @unique
+  invoiceNumber String?
+  totalItems    Int      @default(0)
+  notes         String?
+  supplierId    String
+  receivedById  String?
+  receivedDate  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  receivedBy    User?    @relation(fields: [receivedById], references: [id])
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model InventoryTransaction {
+  id              String          @id @default(uuid())
+  transactionType TransactionType
+  quantity        Int
+  previousStock   Int
+  newStock        Int
+  referenceNumber String?
+  notes           String?
+  productId       String
+  performedById   String
+  createdAt       DateTime        @default(now())
+  performedBy     User            @relation(fields: [performedById], references: [id])
+  product         Product         @relation(fields: [productId], references: [id])
+
+  @@index([transactionType])
+  @@index([createdAt])
+}
+
+model Return {
+  id              String   @id @default(uuid())
+  returnQuantity  Int
+  returnReason    String?
+  conditionStatus String?
+  productId       String
+  processedById   String
+  createdAt       DateTime @default(now())
+  processedBy     User     @relation(fields: [processedById], references: [id])
+  product         Product  @relation(fields: [productId], references: [id])
+}
+
+model Customer {
+  id           String       @id @default(uuid())
+  fullName     String
+  phoneNumber  String       @unique
+  email        String?      @unique
+  address      String?
+  city         String?
+  notes        String?
+  customerType CustomerType @default(REGULAR)
+  totalOrders  Int          @default(0)
+  totalSpent   Float        @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+ sales Sale[]
+  @@map("customers")
+}
+
 enum UserRole {
   ADMIN
   MANAGER
@@ -39,185 +178,54 @@ enum BarcodeSource {
   MANUAL
 }
 
-model User {
+enum CustomerType {
+  REGULAR
+  WHOLESALE
+  VIP
+}
+
+model Sale {
   id String @id @default(uuid())
 
-  name String
+  invoiceNumber String @unique
 
-  email String @unique
+  customerId String?
 
-  passwordHash String
+  customer Customer? @relation(fields: [customerId], references: [id])
 
-  role UserRole @default(STAFF)
+  subtotal Float
 
-  isActive Boolean @default(true)
+  discount Float @default(0)
+
+  tax Float @default(0)
+
+  grandTotal Float
+
+  paymentMethod String
 
   createdAt DateTime @default(now())
 
-  updatedAt DateTime @updatedAt
+  saleItems SaleItem[]
 
-  transactions InventoryTransaction[]
-
-  purchaseBatches PurchaseBatch[]
-
-  returns Return[]
+  @@map("sales")
 }
 
-model Category {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  products Product[]
-}
-
-model Supplier {
+model SaleItem {
   id String @id @default(uuid())
 
-  supplierName  String
-  contactPerson String?
-  phone         String?
-  email         String?
-  address       String?
+  saleId String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  purchaseBatches PurchaseBatch[]
-}
-
-model Product {
-  id String @id @default(uuid())
-
-  sku String @unique
-
-  productName String
-
-  brand String?
-
-  color String
-
-  size String
-
-  fabric String?
-
-  purchasePrice Decimal @db.Decimal(10, 2)
-
-  salePrice Decimal @db.Decimal(10, 2)
-
-  stockQuantity Int @default(0)
-
-  minStockAlert Int @default(5)
-
-  imageUrl String?
-
-  description String?
-
-  isActive Boolean @default(true)
-
-  categoryId String
-
-  category Category @relation(fields: [categoryId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  barcodes Barcode[]
-
-  transactions InventoryTransaction[]
-
-  returns Return[]
-
-  @@index([sku])
-  @@index([productName])
-}
-
-model Barcode {
-  id String @id @default(uuid())
-
-  barcodeValue String @unique
-
-  barcodeType BarcodeType
-
-  barcodeSource BarcodeSource
-
-  isPrimary Boolean @default(false)
+  sale Sale @relation(fields: [saleId], references: [id])
 
   productId String
-  product   Product @relation(fields: [productId], references: [id])
 
-  createdAt DateTime @default(now())
-
-  @@index([barcodeValue])
-}
-
-model PurchaseBatch {
-  id String @id @default(uuid())
-
-  batchNumber String @unique
-
-  invoiceNumber String?
-
-  totalItems Int @default(0)
-
-  notes String?
-
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id])
-
-  receivedById String?
-  receivedBy   User?   @relation(fields: [receivedById], references: [id])
-
-  receivedDate DateTime @default(now())
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model InventoryTransaction {
-  id String @id @default(uuid())
-
-  transactionType TransactionType
+  product Product @relation(fields: [productId], references: [id])
 
   quantity Int
 
-  previousStock Int
-  newStock      Int
+  price Float
 
-  referenceNumber String?
+  total Float
 
-  notes String?
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-
-  performedById String
-  performedBy   User   @relation(fields: [performedById], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@index([transactionType])
-  @@index([createdAt])
-}
-
-model Return {
-  id String @id @default(uuid())
-
-  returnQuantity Int
-
-  returnReason String?
-
-  conditionStatus String?
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-
-  processedById String
-  processedBy   User   @relation(fields: [processedById], references: [id])
-
-  createdAt DateTime @default(now())
+  @@map("sale_items")
 }
