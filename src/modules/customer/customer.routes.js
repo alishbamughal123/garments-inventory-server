@@ -1,79 +1,73 @@
 
-const express =
-  require("express");
+const express = require("express");
 
-const {
-  addCustomer,
-  getAllCustomers,
-  getSingleCustomer,
-  editCustomer,
-  removeCustomer,
-} = require("./customer.controller");
+const router = express.Router();
 
 const authMiddleware =
-  require("../../middlewares/auth.middleware");
+  require("../../../src/middlewares/auth.middleware")
 
-const router =
-  express.Router();
+const {
+  createCustomerHandler,
+  getCustomersHandler,
+  getCustomerByIdHandler,
+  updateCustomerHandler,
+  deleteCustomerHandler,
+  addInteractionHandler,
+  getInteractionsHandler,
+} = require("./customer.controller");
 
 /*
 |--------------------------------------------------------------------------
-| CREATE CUSTOMER
+| CUSTOMERS
 |--------------------------------------------------------------------------
 */
 
 router.post(
   "/",
   authMiddleware,
-  addCustomer
+  createCustomerHandler
 );
-
-/*
-|--------------------------------------------------------------------------
-| GET ALL CUSTOMERS
-|--------------------------------------------------------------------------
-*/
 
 router.get(
   "/",
   authMiddleware,
-  getAllCustomers
+  getCustomersHandler
 );
-
-/*
-|--------------------------------------------------------------------------
-| GET SINGLE CUSTOMER
-|--------------------------------------------------------------------------
-*/
 
 router.get(
   "/:id",
   authMiddleware,
-  getSingleCustomer
+  getCustomerByIdHandler
 );
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE CUSTOMER
-|--------------------------------------------------------------------------
-*/
 
 router.patch(
   "/:id",
   authMiddleware,
-  editCustomer
+  updateCustomerHandler
 );
-
-/*
-|--------------------------------------------------------------------------
-| DELETE CUSTOMER
-|--------------------------------------------------------------------------
-*/
 
 router.delete(
   "/:id",
   authMiddleware,
-  removeCustomer
+  deleteCustomerHandler
+);
+
+/*
+|--------------------------------------------------------------------------
+| CUSTOMER INTERACTIONS
+|--------------------------------------------------------------------------
+*/
+
+router.post(
+  "/:id/interactions",
+  authMiddleware,
+  addInteractionHandler
+);
+
+router.get(
+  "/:id/interactions",
+  authMiddleware,
+  getInteractionsHandler
 );
 
 module.exports = router;

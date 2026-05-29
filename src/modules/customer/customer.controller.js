@@ -6,6 +6,7 @@ const {
 
 const {
   createCustomerSchema,
+  updateCustomerSchema,
 } = require("./customer.validation");
 
 const {
@@ -14,6 +15,8 @@ const {
   getCustomerById,
   updateCustomer,
   deleteCustomer,
+  addInteraction,
+  getCustomerInteractions,
 } = require("./customer.service");
 
 /*
@@ -22,48 +25,53 @@ const {
 |--------------------------------------------------------------------------
 */
 
-const addCustomer = async (
-  req,
-  res
-) => {
-  try {
-    const validatedData =
-      createCustomerSchema.parse(
-        req.body
-      );
+const createCustomerHandler =
+  async (req, res) => {
+    try {
+      const validatedData =
+        createCustomerSchema.parse(
+          req.body
+        );
 
-    const result =
-      await createCustomer(
-        validatedData
-      );
+      const result =
+        await createCustomer(
+          validatedData
+        );
 
-    return successResponse(
-      res,
-      result,
-      "Customer created successfully"
-    );
-  } catch (error) {
-    return errorResponse(
-      res,
-      error.message
-    );
-  }
-};
+      return successResponse(
+        res,
+        result,
+        "Customer created successfully"
+      );
+    } catch (error) {
+      return errorResponse(
+        res,
+        error.message
+      );
+    }
+  };
 
 /*
 |--------------------------------------------------------------------------
-| GET ALL CUSTOMERS
+| GET CUSTOMERS
 |--------------------------------------------------------------------------
 */
 
-const getAllCustomers =
+const getCustomersHandler =
   async (req, res) => {
     try {
-      const search =
-        req.query.search || "";
+      const {
+        search,
+        customerType,
+        status,
+      } = req.query;
 
       const result =
-        await getCustomers(search);
+        await getCustomers(
+          search,
+          customerType,
+          status
+        );
 
       return successResponse(
         res,
@@ -80,11 +88,11 @@ const getAllCustomers =
 
 /*
 |--------------------------------------------------------------------------
-| GET SINGLE CUSTOMER
+| GET CUSTOMER BY ID
 |--------------------------------------------------------------------------
 */
 
-const getSingleCustomer =
+const getCustomerByIdHandler =
   async (req, res) => {
     try {
       const result =
@@ -111,34 +119,32 @@ const getSingleCustomer =
 |--------------------------------------------------------------------------
 */
 
-const editCustomer = async (
-  req,
-  res
-) => {
-  try {
-    const validatedData =
-      createCustomerSchema.parse(
-        req.body
-      );
+const updateCustomerHandler =
+  async (req, res) => {
+    try {
+      const validatedData =
+        updateCustomerSchema.parse(
+          req.body
+        );
 
-    const result =
-      await updateCustomer(
-        req.params.id,
-        validatedData
-      );
+      const result =
+        await updateCustomer(
+          req.params.id,
+          validatedData
+        );
 
-    return successResponse(
-      res,
-      result,
-      "Customer updated successfully"
-    );
-  } catch (error) {
-    return errorResponse(
-      res,
-      error.message
-    );
-  }
-};
+      return successResponse(
+        res,
+        result,
+        "Customer updated successfully"
+      );
+    } catch (error) {
+      return errorResponse(
+        res,
+        error.message
+      );
+    }
+  };
 
 /*
 |--------------------------------------------------------------------------
@@ -146,16 +152,17 @@ const editCustomer = async (
 |--------------------------------------------------------------------------
 */
 
-const removeCustomer =
+const deleteCustomerHandler =
   async (req, res) => {
     try {
-      await deleteCustomer(
-        req.params.id
-      );
+      const result =
+        await deleteCustomer(
+          req.params.id
+        );
 
       return successResponse(
         res,
-        null,
+        result,
         "Customer deleted successfully"
       );
     } catch (error) {
@@ -166,10 +173,67 @@ const removeCustomer =
     }
   };
 
+/*
+|--------------------------------------------------------------------------
+| ADD INTERACTION
+|--------------------------------------------------------------------------
+*/
+
+const addInteractionHandler =
+  async (req, res) => {
+    try {
+      const result =
+        await addInteraction(
+          req.params.id,
+          req.body
+        );
+
+      return successResponse(
+        res,
+        result,
+        "Interaction added successfully"
+      );
+    } catch (error) {
+      return errorResponse(
+        res,
+        error.message
+      );
+    }
+  };
+
+/*
+|--------------------------------------------------------------------------
+| GET INTERACTIONS
+|--------------------------------------------------------------------------
+*/
+
+const getInteractionsHandler =
+  async (req, res) => {
+    try {
+      const result =
+        await getCustomerInteractions(
+          req.params.id
+        );
+
+      return successResponse(
+        res,
+        result,
+        "Interactions fetched successfully"
+      );
+    } catch (error) {
+      return errorResponse(
+        res,
+        error.message
+      );
+    }
+  };
+
 module.exports = {
-  addCustomer,
-  getAllCustomers,
-  getSingleCustomer,
-  editCustomer,
-  removeCustomer,
+  createCustomerHandler,
+  getCustomersHandler,
+  getCustomerByIdHandler,
+  updateCustomerHandler,
+  deleteCustomerHandler,
+  addInteractionHandler,
+  getInteractionsHandler,
 };

@@ -1,38 +1,61 @@
 
 const { z } = require("zod");
 
-const createCustomerSchema =
-  z.object({
-    fullName: z
-      .string()
-      .min(2),
+/*
+|--------------------------------------------------------------------------
+| CREATE CUSTOMER
+|--------------------------------------------------------------------------
+*/
 
-    phoneNumber:
-      z.string().min(5),
+const createCustomerSchema = z.object({
+  fullName: z.string().min(2),
 
-    email: z
-      .string()
-      .email()
-      .optional()
-      .or(z.literal("")),
+  companyName: z.string().optional(),
 
-    address:
-      z.string().optional(),
+  designation: z.string().optional(),
 
-    city:
-      z.string().optional(),
+  phoneNumber: z.string().min(5),
 
-    notes:
-      z.string().optional(),
+  alternatePhone: z.string().optional(),
 
-    customerType:
-      z.enum([
-        "REGULAR",
-        "WHOLESALE",
-        "VIP",
-      ]),
-  });
+  email: z.string().email().optional(),
+
+  address: z.string().optional(),
+
+  city: z.string().optional(),
+
+  website: z.string().optional(),
+
+  source: z.string().optional(),
+
+  notes: z.string().optional(),
+
+  customerType: z
+    .enum([
+      "REGULAR",
+      "WHOLESALE",
+      "VIP",
+    ])
+    .optional(),
+
+  status: z
+    .enum([
+      "ACTIVE",
+      "INACTIVE",
+    ])
+    .optional(),
+});
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE CUSTOMER
+|--------------------------------------------------------------------------
+*/
+
+const updateCustomerSchema =
+  createCustomerSchema.partial();
 
 module.exports = {
   createCustomerSchema,
+  updateCustomerSchema,
 };

@@ -1,7 +1,4 @@
-
-
-const prisma =
-  require("../../config/db");
+const prisma = require("../../config/db");
 
 /*
 |--------------------------------------------------------------------------
@@ -9,84 +6,105 @@ const prisma =
 |--------------------------------------------------------------------------
 */
 
-const createCustomer =
-  async (payload) => {
-    const existingCustomer =
-      await prisma.customer.findUnique(
-        {
-          where: {
+const createCustomer = async (payload) => {
+  const existingCustomer =
+    await prisma.customer.findFirst({
+      where: {
+        OR: [
+          {
             phoneNumber:
               payload.phoneNumber,
           },
-        }
-      );
-
-    if (existingCustomer) {
-      throw new Error(
-        "Customer already exists"
-      );
-    }
-
-    return prisma.customer.create({
-      data: payload,
+          {
+            email:
+              payload.email ||
+              undefined,
+          },
+        ],
+      },
     });
-  };
+
+  if (existingCustomer) {
+    throw new Error(
+      "Customer already exists"
+    );
+  }
+
+  return await prisma.customer.create({
+    data: payload,
+  });
+};
 
 /*
 |--------------------------------------------------------------------------
-| GET ALL CUSTOMERS
+| GET CUSTOMERS
 |--------------------------------------------------------------------------
 */
 
-const getCustomers =
-  async (search = "") => {
-    return prisma.customer.findMany(
-      {
-        where: {
-          OR: [
-            {
-              fullName: {
-                contains:
-                  search,
+const getCustomers = async (
+  search = "",
+  customerType,
+  status
+) => {
 
-                mode:
-                  "insensitive",
-              },
-            },
+  const result =
+    await prisma.customer.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        companyName: true,
+        designation: true,
+        phoneNumber: true,
+        alternatePhone: true,
+        email: true,
+        website: true,
+        source: true,
+        status: true,
+        address: true,
+        city: true,
+        notes: true,
+        customerType: true,
+        totalOrders: true,
+        totalSpent: true,
+        createdAt: true,
+        updatedAt: true,
+      },
 
-            {
-              phoneNumber: {
-                contains:
-                  search,
-              },
-            },
-          ],
-        },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-        orderBy: {
-          createdAt:
-            "desc",
-        },
-      }
-    );
-  };
+  console.log(
+    "FIRST CUSTOMER =>",
+    result[0]
+  );
+
+  return result;
+};
 
 /*
 |--------------------------------------------------------------------------
-| GET SINGLE CUSTOMER
+| GET CUSTOMER BY ID
 |--------------------------------------------------------------------------
 */
 
 const getCustomerById =
   async (id) => {
     const customer =
-      await prisma.customer.findUnique(
-        {
-          where: {
-            id,
+      await prisma.customer.findUnique({
+        where: { id },
+
+        include: {
+          sales: true,
+
+          interactions: {
+            orderBy: {
+              createdAt: "desc",
+            },
           },
-        }
-      );
+        },
+      });
 
     if (!customer) {
       throw new Error(
@@ -104,19 +122,23 @@ const getCustomerById =
 */
 
 const updateCustomer =
-  async (
-    id,
-    payload
-  ) => {
-    return prisma.customer.update(
-      {
-        where: {
-          id,
-        },
+  async (id, payload) => {
+    const customer =
+      await prisma.customer.findUnique({
+        where: { id },
+      });
 
-        data: payload,
-      }
-    );
+    if (!customer) {
+      throw new Error(
+        "Customer not found"
+      );
+    }
+
+    return await prisma.customer.update({
+      where: { id },
+
+      data: payload,
+    });
   };
 
 /*
@@ -127,11 +149,69 @@ const updateCustomer =
 
 const deleteCustomer =
   async (id) => {
-    return prisma.customer.delete({
-      where: {
-        id,
-      },
+    const customer =
+      await prisma.customer.findUnique({
+        where: { id },
+      });
+
+    if (!customer) {
+      throw new Error(
+        "Customer not found"
+      );
+    }
+
+    return await prisma.customer.delete({
+      where: { id },
     });
+  };
+
+/*
+|--------------------------------------------------------------------------
+| ADD INTERACTION
+|--------------------------------------------------------------------------
+*/
+
+const addInteraction =
+  async (
+    customerId,
+    payload
+  ) => {
+    return await prisma.customerInteraction.create(
+      {
+        data: {
+          customerId,
+
+          type: payload.type,
+
+          subject:
+            payload.subject,
+
+          description:
+            payload.description,
+        },
+      }
+    );
+  };
+
+/*
+|--------------------------------------------------------------------------
+| GET INTERACTIONS
+|--------------------------------------------------------------------------
+*/
+
+const getCustomerInteractions =
+  async (customerId) => {
+    return await prisma.customerInteraction.findMany(
+      {
+        where: {
+          customerId,
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+      }
+    );
   };
 
 module.exports = {
@@ -140,4 +220,6 @@ module.exports = {
   getCustomerById,
   updateCustomer,
   deleteCustomer,
+  addInteraction,
+  getCustomerInteractions,
 };

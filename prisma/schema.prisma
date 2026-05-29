@@ -64,7 +64,7 @@ model Product {
   transactions  InventoryTransaction[]
   category      Category               @relation(fields: [categoryId], references: [id])
   returns       Return[]
-saleItems SaleItem[]
+  saleItems     SaleItem[]
 
   @@index([sku])
   @@index([productName])
@@ -129,21 +129,70 @@ model Return {
 }
 
 model Customer {
-  id           String       @id @default(uuid())
-  fullName     String
-  phoneNumber  String       @unique
-  email        String?      @unique
-  address      String?
-  city         String?
-  notes        String?
-  customerType CustomerType @default(REGULAR)
-  totalOrders  Int          @default(0)
-  totalSpent   Float        @default(0)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id String @id @default(uuid())
 
- sales Sale[]
+  fullName String
+
+  companyName String?
+  designation String?
+
+  phoneNumber    String  @unique
+  alternatePhone String?
+
+  email String? @unique
+
+  address String?
+  city    String?
+
+  website String?
+
+  source String?
+
+  status CustomerStatus @default(ACTIVE)
+
+  notes String?
+
+  customerType CustomerType @default(REGULAR)
+
+  totalOrders Int   @default(0)
+  totalSpent  Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  interactions CustomerInteraction[]
+
   @@map("customers")
+}
+
+model CustomerInteraction {
+  id String @id @default(uuid())
+
+  customerId String
+
+  type InteractionType
+
+  subject String
+
+  description String?
+
+  createdAt DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InteractionType {
+  CALL
+  MEETING
+  NOTE
+  FOLLOW_UP
 }
 
 enum UserRole {
