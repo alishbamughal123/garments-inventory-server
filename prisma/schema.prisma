@@ -8,17 +8,21 @@ datasource db {
 }
 
 model User {
-  id              String                 @id @default(uuid())
-  name            String
-  email           String                 @unique
-  passwordHash    String
-  role            UserRole               @default(STAFF)
-  isActive        Boolean                @default(true)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   transactions    InventoryTransaction[]
   purchaseBatches PurchaseBatch[]
   returns         Return[]
+
+  leadsAssigned Lead[] @relation("LeadAssignedTo")
+  leadsCreated  Lead[] @relation("LeadCreatedBy")
 }
 
 model Category {
@@ -277,4 +281,111 @@ model SaleItem {
   total Float
 
   @@map("sale_items")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  FACEBOOK
+  INSTAGRAM
+  WHATSAPP
+  REFERRAL
+  WALK_IN
+  TRADE_SHOW
+  EXISTING_CUSTOMER
+  OTHER
+}
+
+model Lead {
+  id String @id @default(uuid())
+
+  fullName    String
+  companyName String?
+  designation String?
+
+  email       String?
+  phoneNumber String
+
+  alternatePhone String?
+
+  address String?
+  city    String?
+
+  website String?
+
+  source LeadSource
+  status LeadStatus @default(NEW)
+
+  expectedDealValue Float @default(0)
+
+  notes String?
+
+  assignedToId String?
+  createdById  String
+
+  assignedTo User? @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+
+  createdBy User @relation("LeadCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities        LeadActivity[]
+  assignmentHistory LeadAssignmentHistory[]
+  stageHistory      LeadStageHistory[]
+}
+
+model LeadActivity {
+  id String @id @default(uuid())
+
+  leadId String
+
+  activityType String
+  subject      String
+  description  String?
+
+  createdById String
+
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model LeadAssignmentHistory {
+  id String @id @default(uuid())
+
+  leadId String
+
+  previousOwnerId String?
+  newOwnerId      String
+
+  assignedById String
+
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model LeadStageHistory {
+  id String @id @default(uuid())
+
+  leadId String
+
+  previousStage LeadStatus?
+  newStage      LeadStatus
+
+  changedById String
+
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
