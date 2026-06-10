@@ -1,6 +1,6 @@
 const {
   successResponse,
-  errorResponse,
+  handleControllerError,
 } = require("../../utils/responseHandler");
 
 const {
@@ -47,9 +47,9 @@ const createLeadHandler =
         "Lead created successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -72,9 +72,9 @@ const getLeadsHandler =
         "Leads fetched successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -99,9 +99,9 @@ const getLeadByIdHandler =
         "Lead fetched successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -127,9 +127,9 @@ const updateLeadHandler =
         "Lead updated successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -154,9 +154,9 @@ const deleteLeadHandler =
         "Lead deleted successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -188,9 +188,9 @@ const addLeadActivityHandler =
         "Activity added successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -215,9 +215,9 @@ const getLeadActivitiesHandler =
         "Activities fetched successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -244,9 +244,9 @@ const assignLeadHandler =
         "Lead assigned successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -273,9 +273,9 @@ const updateLeadStageHandler =
         "Lead stage updated successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -300,11 +300,9 @@ const convertLeadHandler =
         "Lead converted successfully"
       );
     } catch (error) {
-      console.log(error);
-
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };

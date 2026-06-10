@@ -1,7 +1,7 @@
 
 const {
   successResponse,
-  errorResponse,
+  handleControllerError,
 } = require("../../utils/responseHandler");
 
 const {
@@ -44,9 +44,9 @@ const createCustomerHandler =
         "Customer created successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -79,9 +79,9 @@ const getCustomersHandler =
         "Customers fetched successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -106,9 +106,9 @@ const getCustomerByIdHandler =
         "Customer fetched successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -139,9 +139,9 @@ const updateCustomerHandler =
         "Customer updated successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -166,9 +166,9 @@ const deleteCustomerHandler =
         "Customer deleted successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -194,9 +194,9 @@ const addInteractionHandler =
         "Interaction added successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };
@@ -221,9 +221,9 @@ const getInteractionsHandler =
         "Interactions fetched successfully"
       );
     } catch (error) {
-      return errorResponse(
+      return handleControllerError(
         res,
-        error.message
+        error
       );
     }
   };

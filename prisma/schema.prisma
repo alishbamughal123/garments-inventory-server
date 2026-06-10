@@ -47,30 +47,40 @@ model Supplier {
 }
 
 model Product {
-  id            String                 @id @default(uuid())
-  sku           String                 @unique
-  productName   String
-  brand         String?
-  color         String
-  size          String
-  fabric        String?
-  purchasePrice Decimal                @db.Decimal(10, 2)
-  salePrice     Decimal                @db.Decimal(10, 2)
-  stockQuantity Int                    @default(0)
-  minStockAlert Int                    @default(5)
-  imageUrl      String?
-  description   String?
-  isActive      Boolean                @default(true)
-  categoryId    String
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  barcodes      Barcode[]
-  transactions  InventoryTransaction[]
-  category      Category               @relation(fields: [categoryId], references: [id])
-  returns       Return[]
-  saleItems     SaleItem[]
+  id                String                 @id @default(uuid())
+  sku               String                 @unique
+  productName       String
+  baseStyleNumber   String?
+  styleNumber       String?                @unique
+  styleName         String?
+  itemName          String?
+  brand             String?
+  color             String
+  colorCode         String?
+  size              String?
+  fabric            String?
+  fabricComposition String?
+  fabricWeight      String?
+  purchasePrice     Decimal                @db.Decimal(10, 2)
+  salePrice         Decimal                @db.Decimal(10, 2)
+  stockQuantity     Int                    @default(0)
+  minStockAlert     Int                    @default(5)
+  imageUrl          String?
+  description       String?
+  isActive          Boolean                @default(true)
+  categoryId        String
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  barcodes          Barcode[]
+  transactions      InventoryTransaction[]
+  category          Category               @relation(fields: [categoryId], references: [id])
+  returns           Return[]
+  saleItems         SaleItem[]
 
   @@index([sku])
+  @@index([baseStyleNumber])
+  @@index([styleNumber])
+  @@index([styleName])
   @@index([productName])
 }
 

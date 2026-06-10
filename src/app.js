@@ -5,16 +5,13 @@ const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 
 const routes = require("./routes");
+const env = require("./config/env");
 
 const app = express();
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://garments-inventory-client.vercel.app",
-    ],
-
+    origin: env.corsOrigins,
     credentials: true,
   })
 );

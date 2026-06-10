@@ -1,8 +1,9 @@
 const prisma = require("../../config/db");
-
 const generateSKU = require("../../utils/generateSKU");
-
 const generateBarcode = require("../../utils/generateBarcode");
+const {
+  normalizeProductPayload,
+} = require("./productVariant.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -14,11 +15,16 @@ const createProduct = async (
   payload,
   userId
 ) => {
+  const normalizedPayload =
+    normalizeProductPayload(
+      payload
+    );
+
   // CHECK CATEGORY
   const category =
     await prisma.category.findUnique({
       where: {
-        id: payload.categoryId,
+        id: normalizedPayload.categoryId,
       },
     });
 
@@ -33,12 +39,15 @@ const createProduct = async (
     await prisma.product.count();
 
   // GENERATE SKU
-  const sku = generateSKU(
-    category.name,
-    payload.color,
-    payload.size,
-    totalProducts
-  );
+  const sku =
+    normalizedPayload.styleNumber ||
+    generateSKU(
+      category.name,
+      normalizedPayload.color,
+      normalizedPayload.size ||
+        "OS",
+      totalProducts
+    );
 
   // GENERATE BARCODE
   const internalBarcode =
@@ -60,38 +69,59 @@ const createProduct = async (
               sku,
 
               productName:
-                payload.productName,
+                normalizedPayload.productName,
+
+              baseStyleNumber:
+                normalizedPayload.baseStyleNumber,
+
+              styleNumber:
+                normalizedPayload.styleNumber,
+
+              styleName:
+                normalizedPayload.styleName,
+
+              itemName:
+                normalizedPayload.itemName,
 
               brand:
-                payload.brand,
+                normalizedPayload.brand,
 
               color:
-                payload.color,
+                normalizedPayload.color,
+
+              colorCode:
+                normalizedPayload.colorCode,
 
               size:
-                payload.size,
+                normalizedPayload.size,
 
               fabric:
-                payload.fabric,
+                normalizedPayload.fabric,
+
+              fabricComposition:
+                normalizedPayload.fabricComposition,
+
+              fabricWeight:
+                normalizedPayload.fabricWeight,
 
               purchasePrice:
-                payload.purchasePrice,
+                normalizedPayload.purchasePrice,
 
               salePrice:
-                payload.salePrice,
+                normalizedPayload.salePrice,
 
               stockQuantity:
-                payload.stockQuantity,
+                normalizedPayload.stockQuantity,
 
               minStockAlert:
-                payload.minStockAlert ||
+                normalizedPayload.minStockAlert ||
                 5,
 
               description:
-                payload.description,
+                normalizedPayload.description,
 
               categoryId:
-                payload.categoryId,
+                normalizedPayload.categoryId,
             },
           });
 
@@ -126,12 +156,12 @@ const createProduct = async (
         */
 
         if (
-          payload.supplierBarcode
+          normalizedPayload.supplierBarcode
         ) {
           await tx.barcode.create({
             data: {
               barcodeValue:
-                payload.supplierBarcode,
+                normalizedPayload.supplierBarcode,
 
               barcodeType:
                 "EAN13",
@@ -160,12 +190,12 @@ const createProduct = async (
                 "STOCK_IN",
 
               quantity:
-                payload.stockQuantity,
+                normalizedPayload.stockQuantity,
 
               previousStock: 0,
 
               newStock:
-                payload.stockQuantity,
+                normalizedPayload.stockQuantity,
 
               notes:
                 "Initial product stock",
@@ -242,6 +272,30 @@ const searchProducts =
       where: {
         OR: [
           {
+            styleNumber: {
+              contains: query,
+              mode: "insensitive",
+            },
+          },
+          {
+            baseStyleNumber: {
+              contains: query,
+              mode: "insensitive",
+            },
+          },
+          {
+            styleName: {
+              contains: query,
+              mode: "insensitive",
+            },
+          },
+          {
+            itemName: {
+              contains: query,
+              mode: "insensitive",
+            },
+          },
+          {
             productName: {
               contains: query,
               mode: "insensitive",
@@ -310,6 +364,11 @@ const updateProduct = async (
   id,
   payload
 ) => {
+  const normalizedPayload =
+    normalizeProductPayload(
+      payload
+    );
+
   const product =
     await prisma.product.findUnique({
       where: { id },
@@ -325,37 +384,62 @@ const updateProduct = async (
     where: { id },
     data: {
       productName:
-        payload.productName,
+        normalizedPayload.productName,
+
+      baseStyleNumber:
+        normalizedPayload.baseStyleNumber,
+
+      styleNumber:
+        normalizedPayload.styleNumber,
+
+      styleName:
+        normalizedPayload.styleName,
+
+      itemName:
+        normalizedPayload.itemName,
 
       brand:
-        payload.brand,
+        normalizedPayload.brand,
 
       color:
-        payload.color,
+        normalizedPayload.color,
+
+      colorCode:
+        normalizedPayload.colorCode,
 
       size:
-        payload.size,
+        normalizedPayload.size,
 
       fabric:
-        payload.fabric,
+        normalizedPayload.fabric,
+
+      fabricComposition:
+        normalizedPayload.fabricComposition,
+
+      fabricWeight:
+        normalizedPayload.fabricWeight,
 
       purchasePrice:
-        payload.purchasePrice,
+        normalizedPayload.purchasePrice,
 
       salePrice:
-        payload.salePrice,
+        normalizedPayload.salePrice,
 
       stockQuantity:
-        payload.stockQuantity,
+        normalizedPayload.stockQuantity,
 
       minStockAlert:
-        payload.minStockAlert,
+        normalizedPayload.minStockAlert,
 
       description:
-        payload.description,
+        normalizedPayload.description,
 
       categoryId:
-        payload.categoryId,
+        normalizedPayload.categoryId,
+
+      sku:
+        normalizedPayload.styleNumber ||
+        product.sku,
     },
   });
 };
@@ -372,6 +456,13 @@ const deleteProduct = async (
   const product =
     await prisma.product.findUnique({
       where: { id },
+      include: {
+        saleItems: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
   if (!product) {
@@ -380,9 +471,41 @@ const deleteProduct = async (
     );
   }
 
-  return prisma.product.delete({
-    where: { id },
-  });
+  if (
+    product.saleItems.length > 0
+  ) {
+    throw new Error(
+      "This article is linked to sales and cannot be deleted"
+    );
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.barcode.deleteMany({
+        where: {
+          productId: id,
+        },
+      });
+
+      await tx.inventoryTransaction.deleteMany(
+        {
+          where: {
+            productId: id,
+          },
+        }
+      );
+
+      await tx.return.deleteMany({
+        where: {
+          productId: id,
+        },
+      });
+
+      return tx.product.delete({
+        where: { id },
+      });
+    }
+  );
 };
 module.exports = {
   createProduct,

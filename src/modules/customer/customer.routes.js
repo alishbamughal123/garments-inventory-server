@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware =
-  require("../../../src/middlewares/auth.middleware")
+  require("../../middlewares/auth.middleware");
 
 const {
   createCustomerHandler,

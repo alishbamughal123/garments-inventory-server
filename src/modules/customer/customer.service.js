@@ -1,5 +1,59 @@
 const prisma = require("../../config/db");
 
+const buildCustomerFilters = (
+  search,
+  customerType,
+  status
+) => {
+  const filters = [];
+
+  if (search) {
+    filters.push({
+      OR: [
+        {
+          fullName: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          companyName: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          phoneNumber: {
+            contains: search,
+          },
+        },
+        {
+          email: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      ],
+    });
+  }
+
+  if (customerType) {
+    filters.push({
+      customerType,
+    });
+  }
+
+  if (status) {
+    filters.push({
+      status,
+    });
+  }
+
+  return filters.length > 0
+    ? { AND: filters }
+    : undefined;
+};
+
 /*
 |--------------------------------------------------------------------------
 | CREATE CUSTOMER
@@ -46,9 +100,13 @@ const getCustomers = async (
   customerType,
   status
 ) => {
-
   const result =
     await prisma.customer.findMany({
+      where: buildCustomerFilters(
+        search,
+        customerType,
+        status
+      ),
       select: {
         id: true,
         fullName: true,
@@ -74,11 +132,6 @@ const getCustomers = async (
         createdAt: "desc",
       },
     });
-
-  console.log(
-    "FIRST CUSTOMER =>",
-    result[0]
-  );
 
   return result;
 };

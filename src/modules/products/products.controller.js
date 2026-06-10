@@ -14,6 +14,7 @@ const {
 
 const {
   createProductSchema,
+  updateProductSchema,
 } = require("./products.validation");
 
 const generateBarcodeImage =
@@ -134,8 +135,10 @@ const getBarcodeImage =
 const search =
   async (req, res) => {
     try {
-      const { query } =
-        req.query;
+      const query =
+        req.query.query ||
+        req.query.q ||
+        "";
 
       const result =
         await searchProducts(
@@ -178,10 +181,15 @@ const search =
 const update =
   async (req, res) => {
     try {
+      const validatedData =
+        updateProductSchema.parse(
+          req.body
+        );
+
       const result =
         await updateProduct(
           req.params.id,
-          req.body
+          validatedData
         );
 
       return successResponse(
