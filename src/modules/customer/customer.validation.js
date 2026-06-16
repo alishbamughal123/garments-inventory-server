@@ -55,7 +55,29 @@ const createCustomerSchema = z.object({
 const updateCustomerSchema =
   createCustomerSchema.partial();
 
+const customerInteractionSchema =
+  z.object({
+    type: z.enum([
+      "CALL",
+      "MEETING",
+      "NOTE",
+      "FOLLOW_UP",
+    ]),
+    subject: z
+      .string()
+      .min(1),
+    description:
+      z.string().optional(),
+    startsAt: z.coerce
+      .date()
+      .optional(),
+    endsAt: z.coerce
+      .date()
+      .optional(),
+  });
+
 module.exports = {
   createCustomerSchema,
   updateCustomerSchema,
+  customerInteractionSchema,
 };

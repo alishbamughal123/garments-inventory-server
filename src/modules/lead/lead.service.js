@@ -1,5 +1,8 @@
 const prisma =
   require("../../config/db");
+const {
+  logActivity,
+} = require("../activity/activity.service");
 
 const createLead =
   async (
@@ -29,14 +32,120 @@ const getLeads =
 
 const getLeadById =
   async (id) => {
-    return await prisma.lead.findUnique({
+    const lead =
+      await prisma.lead.findUnique({
       where: { id },
 
       include: {
-        activities: true,
+        activities: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
         assignedTo: true,
+        tasks: {
+          include: {
+            assignedUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: {
+            dueDate: "asc",
+          },
+        },
+        crmActivities: {
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+            task: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+              },
+            },
+            emailMessage: {
+              select: {
+                id: true,
+                subject: true,
+                direction: true,
+                status: true,
+                toEmail: true,
+                fromEmail: true,
+                openedAt: true,
+                repliedAt: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+        emailConversations: {
+          include: {
+            messages: {
+              orderBy: {
+                createdAt: "desc",
+              },
+            },
+          },
+          orderBy: {
+            lastMessageAt: "desc",
+          },
+        },
       },
     });
+
+    if (!lead) {
+      return null;
+    }
+
+    const activityTimeline = [
+      ...lead.activities.map(
+        (activity) => ({
+          id: activity.id,
+          type:
+            activity.activityType,
+          subject:
+            activity.subject,
+          description:
+            activity.description,
+          createdAt:
+            activity.createdAt,
+          source: "LEGACY_ACTIVITY",
+        })
+      ),
+      ...lead.crmActivities.map(
+        (activity) => ({
+          ...activity,
+          source: "ACTIVITY",
+        })
+      ),
+    ].sort(
+      (left, right) =>
+        new Date(
+          right.createdAt
+        ) -
+        new Date(
+          left.createdAt
+        )
+    );
+
+    return {
+      ...lead,
+      activityTimeline,
+    };
   };
 
 const updateLead =
@@ -84,23 +193,50 @@ const addLeadActivity =
       );
     }
 
-    return await prisma.leadActivity.create(
-      {
-        data: {
-          leadId,
+    return prisma.$transaction(
+      async (tx) => {
+        const legacyActivity =
+          await tx.leadActivity.create(
+            {
+              data: {
+                leadId,
 
-          activityType:
-            payload.activityType,
+                activityType:
+                  payload.activityType,
 
+                subject:
+                  payload.subject,
+
+                description:
+                  payload.description,
+
+                createdById:
+                  userId,
+              },
+            }
+          );
+
+        await logActivity({
+          tx,
+          type:
+            payload.activityType ===
+            "FOLLOW_UP"
+              ? "FOLLOW_UP"
+              : payload.activityType,
           subject:
             payload.subject,
-
           description:
             payload.description,
-
+          leadId,
+          startsAt:
+            payload.startsAt,
+          endsAt:
+            payload.endsAt,
           createdById:
             userId,
-        },
+        });
+
+        return legacyActivity;
       }
     );
   };

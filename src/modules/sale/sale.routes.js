@@ -1,18 +1,18 @@
-
-const express =
-  require("express");
+const express = require("express");
 
 const {
   createSaleHandler,
   getAllSales,
   getSingleSale,
+  removeSale,
+  updateSaleHandler,
 } = require("./sale.controller");
 
-const authMiddleware =
-  require("../../middlewares/auth.middleware");
+const authMiddleware = require("../../middlewares/auth.middleware");
 
-const router =
-  express.Router();
+const roleMiddleware = require("../../middlewares/role.middleware");
+
+const router = express.Router();
 
 /*
 |--------------------------------------------------------------------------
@@ -20,11 +20,7 @@ const router =
 |--------------------------------------------------------------------------
 */
 
-router.post(
-  "/",
-  authMiddleware,
-  createSaleHandler
-);
+router.post("/", authMiddleware, createSaleHandler);
 
 /*
 |--------------------------------------------------------------------------
@@ -32,11 +28,7 @@ router.post(
 |--------------------------------------------------------------------------
 */
 
-router.get(
-  "/",
-  authMiddleware,
-  getAllSales
-);
+router.get("/", authMiddleware, getAllSales);
 
 /*
 |--------------------------------------------------------------------------
@@ -44,10 +36,32 @@ router.get(
 |--------------------------------------------------------------------------
 */
 
-router.get(
+router.get("/:id", authMiddleware, getSingleSale);
+
+/*
+|--------------------------------------------------------------------------
+| DELETE SALE
+|--------------------------------------------------------------------------
+*/
+
+router.delete(
   "/:id",
   authMiddleware,
-  getSingleSale
+  roleMiddleware("ADMIN", "MANAGER"),
+  removeSale
+);
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE SALE
+|--------------------------------------------------------------------------
+*/
+
+router.put(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("ADMIN", "MANAGER"),
+  updateSaleHandler
 );
 
 module.exports = router;

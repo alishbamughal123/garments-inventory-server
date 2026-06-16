@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
@@ -11,6 +12,7 @@ model User {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
+  phoneNumber  String?  @unique
   passwordHash String
   role         UserRole @default(STAFF)
   isActive     Boolean  @default(true)
@@ -23,6 +25,15 @@ model User {
 
   leadsAssigned Lead[] @relation("LeadAssignedTo")
   leadsCreated  Lead[] @relation("LeadCreatedBy")
+  tasksAssigned Task[] @relation("TaskAssignedUser")
+  tasksCreated  Task[] @relation("TaskCreatedBy")
+  remindersCreated Reminder[] @relation("ReminderCreatedBy")
+  taskAssignmentsPerformed TaskAssignmentHistory[] @relation("TaskAssignmentPerformedBy")
+  previousTaskAssignments TaskAssignmentHistory[] @relation("TaskPreviousAssignedUser")
+  newTaskAssignments TaskAssignmentHistory[] @relation("TaskNewAssignedUser")
+  crmActivities Activity[] @relation("ActivityCreatedBy")
+  emailConversationsCreated EmailConversation[] @relation("EmailConversationCreatedBy")
+  emailMessagesCreated EmailMessage[] @relation("EmailMessageCreatedBy")
 }
 
 model Category {
@@ -177,6 +188,10 @@ model Customer {
   sales Sale[]
 
   interactions CustomerInteraction[]
+  tasks        Task[]
+  activities   Activity[] @relation("CustomerActivities")
+  emailConversations EmailConversation[]
+  emailMessages EmailMessage[]
 
   @@map("customers")
 }
@@ -352,6 +367,10 @@ model Lead {
   activities        LeadActivity[]
   assignmentHistory LeadAssignmentHistory[]
   stageHistory      LeadStageHistory[]
+  tasks             Task[]
+  crmActivities     Activity[] @relation("LeadActivities")
+  emailConversations EmailConversation[]
+  emailMessages      EmailMessage[]
 }
 
 model LeadActivity {
@@ -398,4 +417,233 @@ model LeadStageHistory {
   createdAt DateTime @default(now())
 
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id             String       @id @default(uuid())
+  title          String
+  description    String?
+  priority       TaskPriority @default(MEDIUM)
+  status         TaskStatus   @default(PENDING)
+  dueDate        DateTime
+  completedAt    DateTime?
+  assignedUserId String?
+  customerId     String?
+  leadId         String?
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assignedUser      User?                   @relation("TaskAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  customer          Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lead              Lead?                   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdBy         User                    @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  reminders         Reminder[]
+  assignmentHistory TaskAssignmentHistory[]
+  activities        Activity[]             @relation("TaskActivities")
+
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([assignedUserId])
+  @@index([customerId])
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+model Reminder {
+  id             String                 @id @default(uuid())
+  reminderDate   DateTime
+  reminderTime   String
+  scheduledFor   DateTime
+  note           String?
+  channel        ReminderChannel
+  recipientType  ReminderRecipientType
+  recipientEmail String?
+  recipientPhone String?
+  deliveryStatus ReminderDeliveryStatus @default(PENDING)
+  sentAt         DateTime?
+  lastAttemptAt  DateTime?
+  failureReason  String?
+  taskId         String
+  createdById    String
+  createdAt      DateTime               @default(now())
+
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdBy User @relation("ReminderCreatedBy", fields: [createdById], references: [id])
+
+  @@index([taskId])
+  @@index([reminderDate])
+  @@index([scheduledFor])
+  @@index([deliveryStatus])
+}
+
+model TaskAssignmentHistory {
+  id                     String   @id @default(uuid())
+  taskId                 String
+  previousAssignedUserId String?
+  newAssignedUserId      String?
+  assignedById           String
+  note                   String?
+  createdAt              DateTime @default(now())
+
+  task                 Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  previousAssignedUser User? @relation("TaskPreviousAssignedUser", fields: [previousAssignedUserId], references: [id], onDelete: SetNull)
+  newAssignedUser      User? @relation("TaskNewAssignedUser", fields: [newAssignedUserId], references: [id], onDelete: SetNull)
+  assignedBy           User  @relation("TaskAssignmentPerformedBy", fields: [assignedById], references: [id])
+
+  @@index([taskId])
+  @@index([createdAt])
+}
+
+model Activity {
+  id             String       @id @default(uuid())
+  type           ActivityType
+  subject        String
+  description    String?
+  startsAt       DateTime?
+  endsAt         DateTime?
+  customerId     String?
+  leadId         String?
+  taskId         String?
+  emailMessageId String?
+  createdById    String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  customer     Customer?     @relation("CustomerActivities", fields: [customerId], references: [id], onDelete: SetNull)
+  lead         Lead?         @relation("LeadActivities", fields: [leadId], references: [id], onDelete: SetNull)
+  task         Task?         @relation("TaskActivities", fields: [taskId], references: [id], onDelete: SetNull)
+  emailMessage EmailMessage? @relation(fields: [emailMessageId], references: [id], onDelete: SetNull)
+  createdBy    User          @relation("ActivityCreatedBy", fields: [createdById], references: [id])
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([taskId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model EmailConversation {
+  id           String   @id @default(uuid())
+  subject      String
+  threadKey    String   @unique
+  customerId   String?
+  leadId       String?
+  createdById  String
+  lastMessageAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdBy User      @relation("EmailConversationCreatedBy", fields: [createdById], references: [id])
+  messages  EmailMessage[]
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([lastMessageAt])
+}
+
+model EmailMessage {
+  id                String         @id @default(uuid())
+  conversationId    String
+  customerId        String?
+  leadId            String?
+  createdById       String
+  direction         EmailDirection
+  status            EmailStatus    @default(PENDING)
+  fromName          String?
+  fromEmail         String
+  toEmail           String
+  cc                String?
+  bcc               String?
+  subject           String
+  bodyHtml          String?
+  bodyText          String?
+  providerMessageId String?        @unique
+  trackingToken     String?        @unique
+  sentAt            DateTime?
+  openedAt          DateTime?
+  repliedAt         DateTime?
+  receivedAt        DateTime?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  conversation EmailConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  customer     Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lead         Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdBy    User              @relation("EmailMessageCreatedBy", fields: [createdById], references: [id])
+  activities   Activity[]
+
+  @@index([conversationId])
+  @@index([customerId])
+  @@index([leadId])
+  @@index([direction])
+  @@index([status])
+  @@index([trackingToken])
+  @@index([createdAt])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  NOTE
+  TASK
+  FOLLOW_UP
+  APPOINTMENT
+}
+
+enum EmailDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum EmailStatus {
+  DRAFT
+  PENDING
+  SENT
+  OPENED
+  REPLIED
+  FAILED
+  RECEIVED
+}
+
+enum ReminderChannel {
+  EMAIL
+  SMS
+  EMAIL_AND_SMS
+}
+
+enum ReminderRecipientType {
+  ASSIGNED_USER
+  CUSTOMER
+  LEAD
+  CUSTOM
+}
+
+enum ReminderDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  PARTIAL
 }

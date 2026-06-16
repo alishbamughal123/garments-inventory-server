@@ -55,6 +55,12 @@ const createLeadSchema =
 
     description:
       z.string().optional(),
+    startsAt: z.coerce
+      .date()
+      .optional(),
+    endsAt: z.coerce
+      .date()
+      .optional(),
   });
 
 module.exports = {

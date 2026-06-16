@@ -4,6 +4,7 @@ const {
   register,
   login,
   getMe,
+  getUsersHandler,
 } = require("./auth.controller");
 
 const authMiddleware = require("../../middlewares/auth.middleware");
@@ -27,5 +28,6 @@ router.post("/login", login);
 */
 
 router.get("/me", authMiddleware, getMe);
+router.get("/users", authMiddleware, getUsersHandler);
 
 module.exports = router;

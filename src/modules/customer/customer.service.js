@@ -1,4 +1,7 @@
 const prisma = require("../../config/db");
+const {
+  logActivity,
+} = require("../activity/activity.service");
 
 const buildCustomerFilters = (
   search,
@@ -150,6 +153,67 @@ const getCustomerById =
 
         include: {
           sales: true,
+          tasks: {
+            include: {
+              assignedUser: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: {
+              dueDate: "asc",
+            },
+          },
+          activities: {
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+              task: {
+                select: {
+                  id: true,
+                  title: true,
+                  status: true,
+                },
+              },
+              emailMessage: {
+                select: {
+                  id: true,
+                  subject: true,
+                  direction: true,
+                  status: true,
+                  toEmail: true,
+                  fromEmail: true,
+                  openedAt: true,
+                  repliedAt: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+          emailConversations: {
+            include: {
+              messages: {
+                orderBy: {
+                  createdAt: "desc",
+                },
+              },
+            },
+            orderBy: {
+              lastMessageAt: "desc",
+            },
+          },
 
           interactions: {
             orderBy: {
@@ -165,7 +229,40 @@ const getCustomerById =
       );
     }
 
-    return customer;
+    const activityTimeline = [
+      ...customer.interactions.map(
+        (interaction) => ({
+          id: interaction.id,
+          type: interaction.type,
+          subject:
+            interaction.subject,
+          description:
+            interaction.description,
+          createdAt:
+            interaction.createdAt,
+          source: "LEGACY_INTERACTION",
+        })
+      ),
+      ...customer.activities.map(
+        (activity) => ({
+          ...activity,
+          source: "ACTIVITY",
+        })
+      ),
+    ].sort(
+      (left, right) =>
+        new Date(
+          right.createdAt
+        ) -
+        new Date(
+          left.createdAt
+        )
+    );
+
+    return {
+      ...customer,
+      activityTimeline,
+    };
   };
 
 /*
@@ -227,21 +324,47 @@ const deleteCustomer =
 const addInteraction =
   async (
     customerId,
-    payload
+    payload,
+    userId
   ) => {
-    return await prisma.customerInteraction.create(
-      {
-        data: {
-          customerId,
+    return prisma.$transaction(
+      async (tx) => {
+        const interaction =
+          await tx.customerInteraction.create(
+            {
+              data: {
+                customerId,
 
-          type: payload.type,
+                type: payload.type,
 
+                subject:
+                  payload.subject,
+
+                description:
+                  payload.description,
+              },
+            }
+          );
+
+        await logActivity({
+          tx,
+          type:
+            payload.type ===
+            "FOLLOW_UP"
+              ? "FOLLOW_UP"
+              : payload.type,
           subject:
             payload.subject,
-
           description:
             payload.description,
-        },
+          customerId,
+          startsAt:
+            payload.startsAt,
+          endsAt: payload.endsAt,
+          createdById: userId,
+        });
+
+        return interaction;
       }
     );
   };

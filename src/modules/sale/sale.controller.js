@@ -12,6 +12,7 @@ const {
   createSale,
   getSales,
   getSaleById,
+  deleteSale,
 } = require("./sale.service");
 
 /*
@@ -100,8 +101,34 @@ const getSingleSale =
     }
   };
 
+/*
+|--------------------------------------------------------------------------
+| DELETE SALE
+|--------------------------------------------------------------------------
+*/
+
+const removeSale = async (req, res) => {
+  try {
+    await deleteSale(req.params.id);
+    return successResponse(res, null, "Sale deleted successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+const updateSaleHandler = async (req, res) => {
+  try {
+    const result = await updateSale(req.params.id, req.body);
+    return successResponse(res, result, "Sale updated successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
 module.exports = {
   createSaleHandler,
   getAllSales,
   getSingleSale,
+  removeSale,
+  updateSaleHandler,
 };

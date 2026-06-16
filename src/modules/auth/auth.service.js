@@ -83,7 +83,27 @@ const loginUser = async (payload) => {
   };
 };
 
+const getUsers = async () => {
+  return prisma.user.findMany({
+    where: {
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  getUsers,
 };

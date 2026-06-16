@@ -1,6 +1,7 @@
 const {
   registerUser,
   loginUser,
+  getUsers,
 } = require("./auth.service");
 
 const {
@@ -58,8 +59,23 @@ const getMe = async (req, res) => {
   }
 };
 
+const getUsersHandler = async (req, res) => {
+  try {
+    const result = await getUsers();
+
+    return successResponse(
+      res,
+      result,
+      "Users fetched successfully"
+    );
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
+  getUsersHandler,
 };

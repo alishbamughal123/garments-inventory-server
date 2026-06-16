@@ -7,6 +7,7 @@ const {
 const {
   createCustomerSchema,
   updateCustomerSchema,
+  customerInteractionSchema,
 } = require("./customer.validation");
 
 const {
@@ -185,7 +186,10 @@ const addInteractionHandler =
       const result =
         await addInteraction(
           req.params.id,
-          req.body
+          customerInteractionSchema.parse(
+            req.body
+          ),
+          req.user.id
         );
 
       return successResponse(

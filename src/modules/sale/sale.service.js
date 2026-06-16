@@ -297,8 +297,107 @@ const getSaleById =
     return sale;
   };
 
+/*
+|--------------------------------------------------------------------------
+| DELETE SALE
+|--------------------------------------------------------------------------
+*/
+
+const deleteSale = async (id) => {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+    include: {
+      saleItems: true,
+      customer: true,
+    },
+  });
+
+  if (!sale) {
+    throw new Error("Sale not found");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. REVERT STOCK FOR EACH ITEM
+    for (const item of sale.saleItems) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: {
+          stockQuantity: {
+            increment: item.quantity,
+          },
+        },
+      });
+
+      // Optional: Add a transaction record for the reversal
+      await tx.inventoryTransaction.create({
+        data: {
+          transactionType: "ADJUSTMENT",
+          quantity: item.quantity,
+          previousStock: 0, // Placeholder
+          newStock: 0, // Placeholder
+          notes: `Reversion from deleted sale ${sale.invoiceNumber}`,
+          productId: item.productId,
+          performedById: "SYSTEM", // Or pass userId if available
+        },
+      });
+    }
+
+    // 2. REVERT CUSTOMER TOTALS
+    if (sale.customerId && sale.customer) {
+      await tx.customer.update({
+        where: { id: sale.customerId },
+        data: {
+          totalOrders: {
+            decrement: 1,
+          },
+          totalSpent: {
+            decrement: sale.grandTotal,
+          },
+        },
+      });
+    }
+
+    // 3. DELETE SALE ITEMS FIRST (Cascade might not be set)
+    await tx.saleItem.deleteMany({
+      where: { saleId: id },
+    });
+
+    // 4. DELETE SALE
+    return await tx.sale.delete({
+      where: { id },
+    });
+  });
+};
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE SALE (BASIC)
+|--------------------------------------------------------------------------
+*/
+
+const updateSale = async (id, payload) => {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+  });
+
+  if (!sale) {
+    throw new Error("Sale not found");
+  }
+
+  // Update only non-calculated fields to maintain integrity
+  return await prisma.sale.update({
+    where: { id },
+    data: {
+      notes: payload.notes,
+      paymentMethod: payload.paymentMethod,
+    },
+  });
+};
+
 module.exports = {
   createSale,
   getSales,
   getSaleById,
+  deleteSale,
+  updateSale,
 };
