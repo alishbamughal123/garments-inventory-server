@@ -44,7 +44,8 @@ const create = async (req, res) => {
 
 const getAll = async (req, res) => {
   try {
-    const result = await getCategories();
+    const { search } = req.query;
+    const result = await getCategories(search);
 
     return successResponse(
       res,

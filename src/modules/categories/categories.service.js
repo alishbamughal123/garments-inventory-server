@@ -31,8 +31,24 @@ const createCategory = async (payload) => {
 |--------------------------------------------------------------------------
 */
 
-const getCategories = async () => {
+const getCategories = async (search = "") => {
   return prisma.category.findMany({
+    where: {
+      OR: [
+        {
+          name: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          description: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      ],
+    },
     orderBy: {
       createdAt: "desc",
     },

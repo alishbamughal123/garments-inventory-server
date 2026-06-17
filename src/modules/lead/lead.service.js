@@ -18,8 +18,36 @@ const createLead =
   };
 
 const getLeads =
-  async () => {
+  async (search = "") => {
     return await prisma.lead.findMany({
+      where: {
+        OR: [
+          {
+            fullName: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            companyName: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            phoneNumber: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            email: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        ],
+      },
       include: {
         assignedTo: true,
       },

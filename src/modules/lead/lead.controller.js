@@ -63,8 +63,9 @@ const createLeadHandler =
 const getLeadsHandler =
   async (req, res) => {
     try {
+      const { search } = req.query;
       const result =
-        await getLeads();
+        await getLeads(search);
 
       return successResponse(
         res,

@@ -162,6 +162,8 @@ const normalizeProductPayload = (
       normalizeSpaces(
         payload.fabricWeight
       ) || null,
+    supplierBarcode:
+      payload.supplierBarcode?.trim() || null,
   };
 };
 

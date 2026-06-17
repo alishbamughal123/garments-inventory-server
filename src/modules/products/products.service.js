@@ -380,7 +380,7 @@ const updateProduct = async (
     );
   }
 
-  return prisma.product.update({
+  const updatedProduct = await prisma.product.update({
     where: { id },
     data: {
       productName:
@@ -442,6 +442,43 @@ const updateProduct = async (
         product.sku,
     },
   });
+
+  /*
+  |--------------------------------------------------------------------------
+  | HANDLE BARCODE UPDATE
+  |--------------------------------------------------------------------------
+  */
+
+  if (normalizedPayload.supplierBarcode) {
+    const existingSupplierBarcode =
+      await prisma.barcode.findFirst({
+        where: {
+          productId: id,
+          barcodeSource: "SUPPLIER",
+        },
+      });
+
+    if (existingSupplierBarcode) {
+      await prisma.barcode.update({
+        where: { id: existingSupplierBarcode.id },
+        data: {
+          barcodeValue: normalizedPayload.supplierBarcode,
+        },
+      });
+    } else {
+      await prisma.barcode.create({
+        data: {
+          barcodeValue: normalizedPayload.supplierBarcode,
+          barcodeType: "EAN13",
+          barcodeSource: "SUPPLIER",
+          isPrimary: false,
+          productId: id,
+        },
+      });
+    }
+  }
+
+  return updatedProduct;
 };
 
 /*
