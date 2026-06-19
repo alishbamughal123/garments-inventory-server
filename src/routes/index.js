@@ -12,6 +12,7 @@ const reportRoutes = require("../modules/reports/reports.routes");
 const taskRoutes = require("../modules/task/task.routes");
 const activityRoutes = require("../modules/activity/activity.routes");
 const emailRoutes = require("../modules/email/email.routes");
+const supportRoutes = require("../modules/support/support.routes");
 
 const router = express.Router();
 
@@ -28,5 +29,6 @@ router.use("/reports", reportRoutes);
 router.use("/tasks", taskRoutes);
 router.use("/activities", activityRoutes);
 router.use("/emails", emailRoutes);
+router.use("/support", supportRoutes);
 
 module.exports = router;

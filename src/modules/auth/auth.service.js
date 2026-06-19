@@ -85,9 +85,6 @@ const loginUser = async (payload) => {
 
 const getUsers = async () => {
   return prisma.user.findMany({
-    where: {
-      isActive: true,
-    },
     select: {
       id: true,
       name: true,
@@ -102,8 +99,93 @@ const getUsers = async () => {
   });
 };
 
+const updateProfile = async (userId, payload) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const updateData = {};
+
+  if (payload.name) updateData.name = payload.name;
+  if (payload.email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+    if (existingUser && existingUser.id !== userId) {
+      throw new Error("Email already in use");
+    }
+    updateData.email = payload.email;
+  }
+
+  if (payload.newPassword) {
+    const isPasswordMatched = await bcrypt.compare(
+      payload.currentPassword,
+      user.passwordHash
+    );
+
+    if (!isPasswordMatched) {
+      throw new Error("Invalid current password");
+    }
+
+    updateData.passwordHash = await bcrypt.hash(payload.newPassword, 10);
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+  });
+
+  const { passwordHash, ...safeUser } = updatedUser;
+  return safeUser;
+};
+
+const updateUser = async (userId, payload) => {
+  const updateData = {};
+
+  if (payload.name) updateData.name = payload.name;
+  if (payload.email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+    if (existingUser && existingUser.id !== userId) {
+      throw new Error("Email already in use");
+    }
+    updateData.email = payload.email;
+  }
+
+  if (payload.password) {
+    updateData.passwordHash = await bcrypt.hash(payload.password, 10);
+  }
+
+  if (payload.role) updateData.role = payload.role;
+  if (payload.isActive !== undefined) updateData.isActive = payload.isActive;
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+  });
+
+  const { passwordHash, ...safeUser } = updatedUser;
+  return safeUser;
+};
+
+const deleteUser = async (userId) => {
+  // Instead of hard delete, we could toggle isActive, 
+  // but if the user wants hard delete:
+  return prisma.user.delete({
+    where: { id: userId },
+  });
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getUsers,
+  updateProfile,
+  updateUser,
+  deleteUser,
 };
