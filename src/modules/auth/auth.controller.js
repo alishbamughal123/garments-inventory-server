@@ -10,6 +10,7 @@ const {
 const {
   successResponse,
   errorResponse,
+  handleControllerError,
 } = require("../../utils/responseHandler");
 
 const {
@@ -31,7 +32,7 @@ const register = async (req, res) => {
       "User registered successfully"
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -47,7 +48,7 @@ const login = async (req, res) => {
       "Login successful"
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 const getMe = async (req, res) => {

@@ -40,6 +40,18 @@ const handleControllerError = (
   }
 
   if (
+    /invalid credentials/i.test(
+      error?.message || ""
+    )
+  ) {
+    return errorResponse(
+      res,
+      error.message,
+      401
+    );
+  }
+
+  if (
     /not found/i.test(
       error?.message || ""
     )
