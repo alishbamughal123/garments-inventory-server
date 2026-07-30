@@ -32,6 +32,7 @@ const register = async (req, res) => {
       "User registered successfully"
     );
   } catch (error) {
+    console.error("Register Error:", error);
     return handleControllerError(res, error);
   }
 };
@@ -48,6 +49,7 @@ const login = async (req, res) => {
       "Login successful"
     );
   } catch (error) {
+    console.error("Login Error:", error);
     return handleControllerError(res, error);
   }
 };
