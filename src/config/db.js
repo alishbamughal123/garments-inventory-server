@@ -5,12 +5,14 @@ const {
 } = require("@prisma/adapter-pg");
 
 const buildDatabaseUrl = () => {
-  const rawUrl =
-    process.env.DATABASE_URL;
+  let rawUrl = process.env.DATABASE_URL;
 
   if (!rawUrl) {
     return undefined;
   }
+
+  // Remove any newlines, whitespace or surrounding quotes
+  rawUrl = rawUrl.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "");
 
   try {
     const url = new URL(rawUrl);
