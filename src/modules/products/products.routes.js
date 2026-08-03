@@ -8,6 +8,7 @@ const {
   search,
   getById,
   update,
+  getPriceHistoryHandler,
   remove,
 } = require("./products.controller");
 
@@ -73,6 +74,12 @@ router.get(
   authMiddleware,
   search
 );
+router.get(
+  "/:id/price-history",
+  authMiddleware,
+  getPriceHistoryHandler
+);
+
 router.get(
   "/:id",
   authMiddleware,

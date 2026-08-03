@@ -1,3 +1,4 @@
+
 const {
   createProduct,
   getProducts,
@@ -6,6 +7,7 @@ const {
   getProductById,
   updateProduct,
   deleteProduct,
+  getPriceHistory,
 } = require("./products.service");
 const {
   successResponse,
@@ -172,6 +174,39 @@ const search =
       );
     } catch (error) {
       return errorResponse(
+
+      const result =
+        await searchProducts(
+          query
+        );
+
+      return successResponse(
+        res,
+        result,
+        "Products fetched successfully"
+      );
+    } catch (error) {
+      return errorResponse(
+        res,
+        error.message
+      );
+    }
+  };
+  const getById =
+  async (req, res) => {
+    try {
+      const result =
+        await getProductById(
+          req.params.id
+        );
+
+      return successResponse(
+        res,
+        result,
+        "Product fetched successfully"
+      );
+    } catch (error) {
+      return errorResponse(
         res,
         error.message
       );
@@ -189,13 +224,37 @@ const update =
       const result =
         await updateProduct(
           req.params.id,
-          validatedData
+          {
+            ...validatedData,
+            userId: req.user?.id,
+          }
         );
 
       return successResponse(
         res,
         result,
         "Product updated successfully"
+      );
+    } catch (error) {
+      return errorResponse(
+        res,
+        error.message
+      );
+    }
+  };
+
+const getPriceHistoryHandler =
+  async (req, res) => {
+    try {
+      const result =
+        await getPriceHistory(
+          req.params.id
+        );
+
+      return successResponse(
+        res,
+        result,
+        "Price history fetched successfully"
       );
     } catch (error) {
       return errorResponse(
@@ -233,5 +292,6 @@ module.exports = {
   search,
   getById,
   update,
+  getPriceHistoryHandler,
   remove,
 };

@@ -445,6 +445,33 @@ const updateProduct = async (
 
   /*
   |--------------------------------------------------------------------------
+  | HANDLE PRICE HISTORY LOGGING
+  |--------------------------------------------------------------------------
+  */
+  const isSalePriceChanged =
+    normalizedPayload.salePrice !== undefined &&
+    Number(normalizedPayload.salePrice) !== Number(product.salePrice);
+
+  const isPurchasePriceChanged =
+    normalizedPayload.purchasePrice !== undefined &&
+    Number(normalizedPayload.purchasePrice) !== Number(product.purchasePrice);
+
+  if (isSalePriceChanged || isPurchasePriceChanged) {
+    await prisma.priceHistory.create({
+      data: {
+        productId: id,
+        oldSalePrice: product.salePrice,
+        newSalePrice: normalizedPayload.salePrice ?? product.salePrice,
+        oldPurchasePrice: product.purchasePrice,
+        newPurchasePrice: normalizedPayload.purchasePrice ?? product.purchasePrice,
+        reason: normalizedPayload.priceChangeReason || "Price updated",
+        changedById: payload?.userId || null,
+      },
+    });
+  }
+
+  /*
+  |--------------------------------------------------------------------------
   | HANDLE BARCODE UPDATE
   |--------------------------------------------------------------------------
   */
@@ -544,6 +571,24 @@ const deleteProduct = async (
     }
   );
 };
+const getPriceHistory = async (productId) => {
+  return await prisma.priceHistory.findMany({
+    where: { productId },
+    include: {
+      changedBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+};
+
 module.exports = {
   createProduct,
   getProducts,
@@ -552,4 +597,5 @@ module.exports = {
   getProductById,
   updateProduct,
   deleteProduct,
+  getPriceHistory,
 };

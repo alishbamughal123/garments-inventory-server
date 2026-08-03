@@ -37,6 +37,7 @@ model User {
 
   ticketsCreated  SupportTicket[] @relation("TicketCreatedBy")
   ticketsAssigned SupportTicket[] @relation("TicketAssignedTo")
+  priceHistories  PriceHistory[]  @relation("PriceChangedBy")
 }
 
 model Category {
@@ -90,6 +91,7 @@ model Product {
   category          Category               @relation(fields: [categoryId], references: [id])
   returns           Return[]
   saleItems         SaleItem[]
+  priceHistories    PriceHistory[]
 
   @@index([sku])
   @@index([baseStyleNumber])
@@ -693,4 +695,24 @@ enum ReminderDeliveryStatus {
   SENT
   FAILED
   PARTIAL
+}
+
+model PriceHistory {
+  id               String   @id @default(uuid())
+  productId        String
+  oldSalePrice     Decimal  @db.Decimal(10, 2)
+  newSalePrice     Decimal  @db.Decimal(10, 2)
+  oldPurchasePrice Decimal? @db.Decimal(10, 2)
+  newPurchasePrice Decimal? @db.Decimal(10, 2)
+  reason           String?
+  changedById      String?
+
+  createdAt DateTime @default(now())
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  changedBy User?   @relation("PriceChangedBy", fields: [changedById], references: [id])
+
+  @@index([productId])
+  @@index([createdAt])
+  @@map("price_histories")
 }

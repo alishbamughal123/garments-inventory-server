@@ -111,13 +111,12 @@ const ensureChannelHasRecipient = (
   }
 
   if (
-    channel ===
-      "EMAIL_AND_SMS" &&
-    (!target.email ||
-      !target.phone)
+    channel === "EMAIL_AND_SMS" &&
+    !target.email &&
+    !target.phone
   ) {
     throw new Error(
-      "Selected reminder recipient must have both email address and phone number"
+      "Selected reminder recipient must have an email address or phone number"
     );
   }
 };
@@ -141,9 +140,11 @@ const resolveReminderTarget = (
         task.assignedUser?.name ||
         "Assigned user",
       email:
+        customEmail ||
         task.assignedUser?.email ||
         null,
       phone:
+        customPhone ||
         task.assignedUser
           ?.phoneNumber || null,
     },
@@ -152,9 +153,11 @@ const resolveReminderTarget = (
         task.customer?.fullName ||
         "Customer",
       email:
+        customEmail ||
         task.customer?.email ||
         null,
       phone:
+        customPhone ||
         task.customer
           ?.phoneNumber || null,
     },
@@ -163,9 +166,11 @@ const resolveReminderTarget = (
         task.lead?.fullName ||
         "Lead",
       email:
+        customEmail ||
         task.lead?.email ||
         null,
       phone:
+        customPhone ||
         task.lead
           ?.phoneNumber || null,
     },
