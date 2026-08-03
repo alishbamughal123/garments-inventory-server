@@ -1,4 +1,3 @@
-
 const {
   createProduct,
   getProducts,
@@ -19,8 +18,7 @@ const {
   updateProductSchema,
 } = require("./products.validation");
 
-const generateBarcodeImage =
-  require("../../utils/barcode.helper");
+const generateBarcodeImage = require("../../utils/barcode.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -28,32 +26,15 @@ const generateBarcodeImage =
 |--------------------------------------------------------------------------
 */
 
-const create = async (
-  req,
-  res
-) => {
+const create = async (req, res) => {
   try {
-    const validatedData =
-      createProductSchema.parse(
-        req.body
-      );
+    const validatedData = createProductSchema.parse(req.body);
 
-    const result =
-      await createProduct(
-        validatedData,
-        req.user.id
-      );
+    const result = await createProduct(validatedData, req.user.id);
 
-    return successResponse(
-      res,
-      result,
-      "Product created successfully"
-    );
+    return successResponse(res, result, "Product created successfully");
   } catch (error) {
-    return errorResponse(
-      res,
-      error.message
-    );
+    return errorResponse(res, error.message);
   }
 };
 
@@ -63,24 +44,13 @@ const create = async (
 |--------------------------------------------------------------------------
 */
 
-const getAll = async (
-  req,
-  res
-) => {
+const getAll = async (req, res) => {
   try {
-    const result =
-      await getProducts();
+    const result = await getProducts();
 
-    return successResponse(
-      res,
-      result,
-      "Products fetched successfully"
-    );
+    return successResponse(res, result, "Products fetched successfully");
   } catch (error) {
-    return errorResponse(
-      res,
-      error.message
-    );
+    return errorResponse(res, error.message);
   }
 };
 
@@ -90,200 +60,95 @@ const getAll = async (
 |--------------------------------------------------------------------------
 */
 
-const getBarcodeImage =
-  async (req, res) => {
-    try {
-      const { barcode } =
-        req.params;
+const getBarcodeImage = async (req, res) => {
+  try {
+    const { barcode } = req.params;
 
-      const imageBuffer =
-        await generateBarcodeImage(
-          barcode
-        );
+    const imageBuffer = await generateBarcodeImage(barcode);
 
-      res.setHeader(
-        "Content-Type",
-        "image/png"
-      );
+    res.setHeader("Content-Type", "image/png");
 
-      return res.send(
-        imageBuffer
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
-  const getLowStock =
-  async (req, res) => {
-    try {
-      const result =
-        await getLowStockProducts();
+    return res.send(imageBuffer);
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Low stock products fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
-const search =
-  async (req, res) => {
-    try {
-      const query =
-        req.query.query ||
-        req.query.q ||
-        "";
+const getLowStock = async (req, res) => {
+  try {
+    const result = await getLowStockProducts();
 
-      const result =
-        await searchProducts(
-          query
-        );
+    return successResponse(
+      res,
+      result,
+      "Low stock products fetched successfully"
+    );
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Products fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
-  const getById =
-  async (req, res) => {
-    try {
-      const result =
-        await getProductById(
-          req.params.id
-        );
+const search = async (req, res) => {
+  try {
+    const query = req.query.query || req.query.q || "";
 
-      return successResponse(
-        res,
-        result,
-        "Product fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
+    const result = await searchProducts(query);
 
-      const result =
-        await searchProducts(
-          query
-        );
+    return successResponse(res, result, "Products fetched successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Products fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
-  const getById =
-  async (req, res) => {
-    try {
-      const result =
-        await getProductById(
-          req.params.id
-        );
+const getById = async (req, res) => {
+  try {
+    const result = await getProductById(req.params.id);
 
-      return successResponse(
-        res,
-        result,
-        "Product fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(res, result, "Product fetched successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
 
-const update =
-  async (req, res) => {
-    try {
-      const validatedData =
-        updateProductSchema.parse(
-          req.body
-        );
+const update = async (req, res) => {
+  try {
+    const validatedData = updateProductSchema.parse(req.body);
 
-      const result =
-        await updateProduct(
-          req.params.id,
-          {
-            ...validatedData,
-            userId: req.user?.id,
-          }
-        );
+    const result = await updateProduct(req.params.id, {
+      ...validatedData,
+      userId: req.user?.id,
+    });
 
-      return successResponse(
-        res,
-        result,
-        "Product updated successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(res, result, "Product updated successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
 
-const getPriceHistoryHandler =
-  async (req, res) => {
-    try {
-      const result =
-        await getPriceHistory(
-          req.params.id
-        );
+const getPriceHistoryHandler = async (req, res) => {
+  try {
+    const result = await getPriceHistory(req.params.id);
 
-      return successResponse(
-        res,
-        result,
-        "Price history fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(
+      res,
+      result,
+      "Price history fetched successfully"
+    );
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
 
-const remove =
-  async (req, res) => {
-    try {
-      const result =
-        await deleteProduct(
-          req.params.id
-        );
+const remove = async (req, res) => {
+  try {
+    const result = await deleteProduct(req.params.id);
 
-      return successResponse(
-        res,
-        result,
-        "Product deleted successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(res, result, "Product deleted successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
 module.exports = {
   create,
   getAll,
