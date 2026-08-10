@@ -1,57 +1,21 @@
 const express = require("express");
+const router = express.Router();
+const authMiddleware = require("../../middlewares/auth.middleware");
 
 const {
   addStock,
   removeStock,
   getAllTransactions,
+  fetchDeliveryNotes,
+  fetchDeliveryNoteDetails
 } = require("./inventory.controller");
 
-const authMiddleware = require("../../middlewares/auth.middleware");
+router.post("/stock-in", authMiddleware, addStock);
+router.post("/stock-out", authMiddleware, removeStock);
+router.get("/transactions", authMiddleware, getAllTransactions);
 
-const roleMiddleware = require("../../middlewares/role.middleware");
-
-const router = express.Router();
-
-/*
-|--------------------------------------------------------------------------
-| STOCK IN
-|--------------------------------------------------------------------------
-*/
-
-router.post(
-  "/stock-in",
-  authMiddleware,
-  roleMiddleware("ADMIN", "MANAGER"),
-  addStock
-);
-
-/*
-|--------------------------------------------------------------------------
-| STOCK OUT
-|--------------------------------------------------------------------------
-*/
-
-router.post(
-  "/stock-out",
-  authMiddleware,
-  roleMiddleware(
-    "ADMIN",
-    "MANAGER",
-    "CASHIER"
-  ),
-  removeStock
-);
-
-/*
-|--------------------------------------------------------------------------
-| GET TRANSACTIONS
-|--------------------------------------------------------------------------
-*/
-
-router.get(
-  "/transactions",
-  authMiddleware,
-  getAllTransactions
-);
+// Delivery Notes routes for CRM
+router.get("/delivery-notes", authMiddleware, fetchDeliveryNotes);
+router.get("/delivery-notes/:id", authMiddleware, fetchDeliveryNoteDetails);
 
 module.exports = router;

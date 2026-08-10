@@ -19,25 +19,26 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  transactions    InventoryTransaction[]
-  purchaseBatches PurchaseBatch[]
-  returns         Return[]
+  transactions            InventoryTransaction[]
+  purchaseBatches         PurchaseBatch[]
+  returns                 Return[]
 
-  leadsAssigned Lead[] @relation("LeadAssignedTo")
-  leadsCreated  Lead[] @relation("LeadCreatedBy")
-  tasksAssigned Task[] @relation("TaskAssignedUser")
-  tasksCreated  Task[] @relation("TaskCreatedBy")
-  remindersCreated Reminder[] @relation("ReminderCreatedBy")
+  leadsAssigned           Lead[]                  @relation("LeadAssignedTo")
+  leadsCreated            Lead[]                  @relation("LeadCreatedBy")
+  tasksAssigned           Task[]                  @relation("TaskAssignedUser")
+  tasksCreated            Task[]                  @relation("TaskCreatedBy")
+  remindersCreated        Reminder[]              @relation("ReminderCreatedBy")
   taskAssignmentsPerformed TaskAssignmentHistory[] @relation("TaskAssignmentPerformedBy")
   previousTaskAssignments TaskAssignmentHistory[] @relation("TaskPreviousAssignedUser")
-  newTaskAssignments TaskAssignmentHistory[] @relation("TaskNewAssignedUser")
-  crmActivities Activity[] @relation("ActivityCreatedBy")
-  emailConversationsCreated EmailConversation[] @relation("EmailConversationCreatedBy")
-  emailMessagesCreated EmailMessage[] @relation("EmailMessageCreatedBy")
+  newTaskAssignments     TaskAssignmentHistory[] @relation("TaskNewAssignedUser")
+  crmActivities           Activity[]              @relation("ActivityCreatedBy")
+  emailConversationsCreated EmailConversation[]   @relation("EmailConversationCreatedBy")
+  emailMessagesCreated    EmailMessage[]          @relation("EmailMessageCreatedBy")
 
-  ticketsCreated  SupportTicket[] @relation("TicketCreatedBy")
-  ticketsAssigned SupportTicket[] @relation("TicketAssignedTo")
-  priceHistories  PriceHistory[]  @relation("PriceChangedBy")
+  ticketsCreated          SupportTicket[]         @relation("TicketCreatedBy")
+  ticketsAssigned         SupportTicket[]         @relation("TicketAssignedTo")
+  priceHistories          PriceHistory[]          @relation("PriceChangedBy")
+  customerOrdersFulfilled CustomerOrder[]
 }
 
 model Category {
@@ -76,6 +77,7 @@ model Product {
   fabric            String?
   fabricComposition String?
   fabricWeight      String?
+  weightInKg        Float                  @default(0.0)
   purchasePrice     Decimal                @db.Decimal(10, 2)
   salePrice         Decimal                @db.Decimal(10, 2)
   stockQuantity     Int                    @default(0)
@@ -86,12 +88,16 @@ model Product {
   categoryId        String
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
+
   barcodes          Barcode[]
   transactions      InventoryTransaction[]
   category          Category               @relation(fields: [categoryId], references: [id])
   returns           Return[]
   saleItems         SaleItem[]
   priceHistories    PriceHistory[]
+  customPrices      CustomerPrice[]
+  customerAccess    CustomerProductAccess[]
+  orderItems        CustomerOrderItem[]
 
   @@index([sku])
   @@index([baseStyleNumber])
@@ -129,21 +135,28 @@ model PurchaseBatch {
 }
 
 model InventoryTransaction {
-  id              String          @id @default(uuid())
-  transactionType TransactionType
-  quantity        Int
-  previousStock   Int
-  newStock        Int
-  referenceNumber String?
-  notes           String?
-  productId       String
-  performedById   String
-  createdAt       DateTime        @default(now())
-  performedBy     User            @relation(fields: [performedById], references: [id])
-  product         Product         @relation(fields: [productId], references: [id])
+  id                String          @id @default(uuid())
+  transactionType   TransactionType
+  quantity          Int
+  previousStock     Int
+  newStock          Int
+  referenceNumber   String?
+  notes             String?
+  productId         String
+  performedById     String
+  customerId        String?
+  packagingWeightKg Float?          @default(0.2)
+  totalWeightKg     Float?
+  createdAt         DateTime        @default(now())
+
+  performedBy       User            @relation(fields: [performedById], references: [id])
+  product           Product         @relation(fields: [productId], references: [id])
+  customer          Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  deliveryNote      DeliveryNote?
 
   @@index([transactionType])
   @@index([createdAt])
+  @@index([customerId])
 }
 
 model Return {
@@ -159,48 +172,157 @@ model Return {
 }
 
 model Customer {
-  id String @id @default(uuid())
-
-  fullName String
-
-  companyName String?
-  designation String?
-
-  phoneNumber    String  @unique
+  id             String         @id @default(uuid())
+  customerCode   String?        @unique
+  fullName       String
+  companyName    String?
+  designation    String?
+  phoneNumber    String         @unique
   alternatePhone String?
+  email          String?        @unique
+  passwordHash   String?
+  isPortalActive Boolean        @default(true)
+  vatNumber      String?
+  address        String?
+  city           String?
+  website        String?
+  source         String?
+  status         CustomerStatus @default(ACTIVE)
+  notes          String?
+  customerType   CustomerType   @default(REGULAR)
+  totalOrders    Int            @default(0)
+  totalSpent     Float          @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  email String? @unique
-
-  address String?
-  city    String?
-
-  website String?
-
-  source String?
-
-  status CustomerStatus @default(ACTIVE)
-
-  notes String?
-
-  customerType CustomerType @default(REGULAR)
-
-  totalOrders Int   @default(0)
-  totalSpent  Float @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  sales Sale[]
-
-  interactions CustomerInteraction[]
-  tasks        Task[]
-  activities   Activity[] @relation("CustomerActivities")
+  sales              Sale[]
+  interactions       CustomerInteraction[]
+  tasks              Task[]
+  activities         Activity[]              @relation("CustomerActivities")
   emailConversations EmailConversation[]
-  emailMessages EmailMessage[]
-
-  supportTickets SupportTicket[]
+  emailMessages      EmailMessage[]
+  supportTickets     SupportTicket[]
+  contacts           CustomerContact[]
+  customPrices       CustomerPrice[]
+  productAccess      CustomerProductAccess[]
+  customerOrders     CustomerOrder[]
+  stockOuts          InventoryTransaction[]
+  deliveryNotes      DeliveryNote[]
 
   @@map("customers")
+}
+
+model CustomerContact {
+  id         String   @id @default(uuid())
+  customerId String
+  name       String
+  title      String?
+  email      String?
+  phone      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model CustomerPrice {
+  id          String   @id @default(uuid())
+  customerId  String
+  productId   String
+  customPrice Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+}
+
+model CustomerProductAccess {
+  id         String   @id @default(uuid())
+  customerId String
+  productId  String
+  isAllowed  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+}
+
+model CustomerOrder {
+  id                String              @id @default(uuid())
+  orderNumber       String              @unique
+  customerId        String
+  status            CustomerOrderStatus @default(PENDING)
+  subtotal          Decimal             @db.Decimal(10, 2)
+  tax               Decimal             @default(0) @db.Decimal(10, 2)
+  totalAmount       Decimal             @db.Decimal(10, 2)
+  garmentWeightKg   Float               @default(0)
+  packagingWeightKg Float               @default(0.2)
+  totalParcelWeight Float               @default(0.2)
+  notes             String?
+  shippingAddress   String?
+  fulfilledAt       DateTime?
+  fulfilledById     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  customer     Customer            @relation(fields: [customerId], references: [id])
+  fulfilledBy  User?               @relation(fields: [fulfilledById], references: [id])
+  orderItems   CustomerOrderItem[]
+  deliveryNote DeliveryNote?
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model CustomerOrderItem {
+  id          String        @id @default(uuid())
+  orderId     String
+  productId   String
+  quantity    Int
+  unitPrice   Decimal       @db.Decimal(10, 2)
+  unitWeight  Float         @default(0)
+  totalPrice  Decimal       @db.Decimal(10, 2)
+  totalWeight Float         @default(0)
+
+  order   CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id])
+}
+
+model DeliveryNote {
+  id                 String                @id @default(uuid())
+  deliveryNoteNumber String                @unique
+  customerId         String
+  orderId            String?               @unique
+  transactionId      String?               @unique
+  garmentWeightKg    Float                 @default(0)
+  packagingWeightKg  Float                 @default(0.2)
+  totalParcelWeight  Float                 @default(0.2)
+  notes              String?
+  createdAt          DateTime              @default(now())
+
+  customer    Customer              @relation(fields: [customerId], references: [id])
+  order       CustomerOrder?        @relation(fields: [orderId], references: [id])
+  transaction InventoryTransaction? @relation(fields: [transactionId], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String
+  entity      String
+  entityId    String?
+  performedBy String
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
 }
 
 model SupportTicket {
@@ -229,6 +351,15 @@ model SupportTicket {
   @@index([priority])
   @@index([customerId])
   @@index([assignedToId])
+}
+
+enum CustomerOrderStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
 }
 
 enum TicketStatus {
@@ -278,6 +409,7 @@ enum UserRole {
   MANAGER
   CASHIER
   STAFF
+  CUSTOMER
 }
 
 enum TransactionType {

@@ -2,724 +2,487 @@ const { Prisma } = require("@prisma/client");
 const prisma = require("../../config/db");
 
 const LEAD_STATUS_ORDER = [
-  "NEW",
-  "CONTACTED",
-  "QUALIFIED",
-  "PROPOSAL_SENT",
-  "NEGOTIATION",
-  "WON",
-  "LOST",
+  "NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "LOST"
 ];
 
 const LEAD_SOURCE_ORDER = [
-  "WEBSITE",
-  "FACEBOOK",
-  "INSTAGRAM",
-  "WHATSAPP",
-  "REFERRAL",
-  "WALK_IN",
-  "TRADE_SHOW",
-  "EXISTING_CUSTOMER",
-  "OTHER",
+  "WEBSITE", "FACEBOOK", "INSTAGRAM", "WHATSAPP", "REFERRAL", "WALK_IN", "TRADE_SHOW", "EXISTING_CUSTOMER", "OTHER"
 ];
 
 const CUSTOMER_TYPE_ORDER = [
-  "REGULAR",
-  "WHOLESALE",
-  "VIP",
+  "REGULAR", "WHOLESALE", "VIP"
 ];
 
-const toNumber = (value) =>
-  value == null ? 0 : Number(value);
-
-const roundToTwo = (value) =>
-  Number(toNumber(value).toFixed(2));
+const toNumber = (value) => (value == null ? 0 : Number(value));
+const roundToTwo = (value) => Number(toNumber(value).toFixed(2));
 
 const normalizeStartDate = (value) => {
-  if (!value) {
-    return undefined;
-  }
-
+  if (!value) return undefined;
   const date = new Date(value);
-
-  if (
-    typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(value)
-  ) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     date.setUTCHours(0, 0, 0, 0);
   }
-
   return date;
 };
 
 const normalizeEndDate = (value) => {
-  if (!value) {
-    return undefined;
-  }
-
+  if (!value) return undefined;
   const date = new Date(value);
-
-  if (
-    typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(value)
-  ) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     date.setUTCHours(23, 59, 59, 999);
   }
-
   return date;
 };
 
-const buildCreatedAtFilter = (
-  from,
-  to
-) => {
+const buildCreatedAtFilter = (from, to) => {
   const createdAt = {};
+  const normalizedFrom = normalizeStartDate(from);
+  const normalizedTo = normalizeEndDate(to);
 
-  const normalizedFrom =
-    normalizeStartDate(from);
-  const normalizedTo =
-    normalizeEndDate(to);
+  if (normalizedFrom) createdAt.gte = normalizedFrom;
+  if (normalizedTo) createdAt.lte = normalizedTo;
 
-  if (normalizedFrom) {
-    createdAt.gte = normalizedFrom;
-  }
-
-  if (normalizedTo) {
-    createdAt.lte = normalizedTo;
-  }
-
-  return Object.keys(createdAt).length > 0
-    ? createdAt
-    : undefined;
+  return Object.keys(createdAt).length > 0 ? createdAt : undefined;
 };
 
 const buildLeadWhere = (query = {}) => {
   const where = {};
-  const createdAt = buildCreatedAtFilter(
-    query.from,
-    query.to
-  );
-
-  if (createdAt) {
-    where.createdAt = createdAt;
-  }
-
-  if (query.leadSource) {
-    where.source = query.leadSource;
-  }
-
-  if (query.leadStatus) {
-    where.status = query.leadStatus;
-  }
-
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  if (createdAt) where.createdAt = createdAt;
+  if (query.leadSource) where.source = query.leadSource;
+  if (query.leadStatus) where.status = query.leadStatus;
   return where;
 };
 
-const buildCustomerWhere = (
-  query = {}
-) => {
+const buildCustomerWhere = (query = {}) => {
   const where = {};
-  const createdAt = buildCreatedAtFilter(
-    query.from,
-    query.to
-  );
-
-  if (createdAt) {
-    where.createdAt = createdAt;
-  }
-
-  if (query.customerType) {
-    where.customerType =
-      query.customerType;
-  }
-
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  if (createdAt) where.createdAt = createdAt;
+  if (query.customerType) where.customerType = query.customerType;
   return where;
 };
 
 const buildSaleWhere = (query = {}) => {
   const where = {};
-  const createdAt = buildCreatedAtFilter(
-    query.from,
-    query.to
-  );
-
-  if (createdAt) {
-    where.createdAt = createdAt;
-  }
-
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  if (createdAt) where.createdAt = createdAt;
   if (query.customerType) {
-    where.customer = {
-      customerType:
-        query.customerType,
-    };
+    where.customer = { customerType: query.customerType };
   }
-
   return where;
 };
 
-const buildDateSqlFilter = (
-  columnName,
-  from,
-  to
-) => {
-  const conditions = [];
-  const normalizedFrom =
-    normalizeStartDate(from);
-  const normalizedTo =
-    normalizeEndDate(to);
+const getCrmOverview = async (query = {}) => {
+  const leadWhere = buildLeadWhere(query);
+  const customerWhere = buildCustomerWhere(query);
+  const saleWhere = buildSaleWhere(query);
 
-  if (normalizedFrom) {
-    conditions.push(
-      Prisma.sql`${Prisma.raw(
-        columnName
-      )} >= ${normalizedFrom}`
-    );
-  }
+  const [
+    totalCustomers,
+    totalLeads,
+    newLeads,
+    wonLeads,
+    lostLeads,
+    expectedRevenueAggregate,
+    closedRevenueAggregate,
+  ] = await Promise.all([
+    prisma.customer.count({ where: customerWhere }),
+    prisma.lead.count({ where: leadWhere }),
+    prisma.lead.count({ where: { ...leadWhere, status: "NEW" } }),
+    prisma.lead.count({ where: { ...leadWhere, status: "WON" } }),
+    prisma.lead.count({ where: { ...leadWhere, status: "LOST" } }),
+    prisma.lead.aggregate({
+      where: { ...leadWhere, status: { not: "LOST" } },
+      _sum: { expectedDealValue: true }
+    }),
+    prisma.sale.aggregate({
+      where: saleWhere,
+      _sum: { grandTotal: true }
+    })
+  ]);
 
-  if (normalizedTo) {
-    conditions.push(
-      Prisma.sql`${Prisma.raw(
-        columnName
-      )} <= ${normalizedTo}`
-    );
-  }
+  const conversionRate = totalLeads > 0 ? roundToTwo((wonLeads / totalLeads) * 100) : 0;
 
-  if (!conditions.length) {
-    return Prisma.sql``;
-  }
-
-  return Prisma.sql`WHERE ${Prisma.join(
-    conditions,
-    Prisma.sql` AND `
-  )}`;
+  return {
+    totalCustomers,
+    totalLeads,
+    newLeads,
+    wonLeads,
+    lostLeads,
+    conversionRate,
+    expectedRevenue: roundToTwo(expectedRevenueAggregate._sum.expectedDealValue),
+    revenueGenerated: roundToTwo(closedRevenueAggregate._sum.grandTotal)
+  };
 };
 
-const formatMonthRows = (
-  rows,
-  valueKey
-) =>
-  rows.map((row) => ({
-    month: row.month,
-    [valueKey]: roundToTwo(
-      row[valueKey]
-    ),
+/*
+|--------------------------------------------------------------------------
+| TASK 4: COMPREHENSIVE SYSTEM REPORTING MODULE
+|--------------------------------------------------------------------------
+*/
+
+// 1. Inventory Report
+const getInventoryReport = async (query = {}) => {
+  const { categoryId, search } = query;
+  const where = {
+    isActive: true,
+    ...(categoryId ? { categoryId } : {}),
+    ...(search ? {
+      OR: [
+        { productName: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+        { styleNumber: { contains: search, mode: "insensitive" } }
+      ]
+    } : {})
+  };
+
+  const products = await prisma.product.findMany({
+    where,
+    include: { category: true },
+    orderBy: { productName: "asc" }
+  });
+
+  let totalItems = 0;
+  let totalInventoryValue = 0;
+  let lowStockCount = 0;
+
+  const items = products.map(p => {
+    const stock = p.stockQuantity;
+    const purchaseVal = Number(p.purchasePrice) * stock;
+    const saleVal = Number(p.salePrice) * stock;
+    const isLowStock = stock <= p.minStockAlert;
+
+    totalItems += stock;
+    totalInventoryValue += purchaseVal;
+    if (isLowStock) lowStockCount++;
+
+    return {
+      id: p.id,
+      sku: p.sku,
+      styleNumber: p.styleNumber,
+      productName: p.productName,
+      category: p.category.name,
+      color: p.color,
+      size: p.size,
+      weightInKg: p.weightInKg || 0,
+      stockQuantity: stock,
+      minStockAlert: p.minStockAlert,
+      purchasePrice: Number(p.purchasePrice),
+      salePrice: Number(p.salePrice),
+      totalPurchaseValue: roundToTwo(purchaseVal),
+      totalSaleValue: roundToTwo(saleVal),
+      isLowStock
+    };
+  });
+
+  return {
+    summary: {
+      totalProducts: products.length,
+      totalStockUnits: totalItems,
+      totalInventoryCostValue: roundToTwo(totalInventoryValue),
+      lowStockAlerts: lowStockCount
+    },
+    items
+  };
+};
+
+// 2. Stock In Report
+const getStockInReport = async (query = {}) => {
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  const transactions = await prisma.inventoryTransaction.findMany({
+    where: {
+      transactionType: "STOCK_IN",
+      ...(createdAt ? { createdAt } : {})
+    },
+    include: {
+      product: { include: { category: true } },
+      performedBy: { select: { name: true, email: true } }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  const totalQuantity = transactions.reduce((acc, t) => acc + t.quantity, 0);
+
+  return {
+    summary: {
+      totalTransactions: transactions.length,
+      totalQuantityIn: totalQuantity
+    },
+    items: transactions.map(t => ({
+      id: t.id,
+      date: t.createdAt,
+      sku: t.product.sku,
+      productName: t.product.productName,
+      category: t.product.category.name,
+      quantity: t.quantity,
+      previousStock: t.previousStock,
+      newStock: t.newStock,
+      notes: t.notes,
+      performedBy: t.performedBy?.name || "System"
+    }))
+  };
+};
+
+// 3. Stock Out Report (Includes Customer & Parcel Weight)
+const getStockOutReport = async (query = {}) => {
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  const transactions = await prisma.inventoryTransaction.findMany({
+    where: {
+      transactionType: "STOCK_OUT",
+      ...(query.customerId ? { customerId: query.customerId } : {}),
+      ...(createdAt ? { createdAt } : {})
+    },
+    include: {
+      product: { include: { category: true } },
+      customer: true,
+      performedBy: { select: { name: true, email: true } },
+      deliveryNote: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  let totalQtyOut = 0;
+  let totalParcelWeightKg = 0;
+
+  const items = transactions.map(t => {
+    totalQtyOut += t.quantity;
+    const weight = t.totalWeightKg || 0;
+    totalParcelWeightKg += weight;
+
+    return {
+      id: t.id,
+      date: t.createdAt,
+      deliveryNoteNumber: t.deliveryNote?.deliveryNoteNumber || "N/A",
+      customerName: t.customer?.fullName || t.customer?.companyName || "Direct Stock Out",
+      companyName: t.customer?.companyName || "N/A",
+      sku: t.product.sku,
+      productName: t.product.productName,
+      quantity: t.quantity,
+      previousStock: t.previousStock,
+      newStock: t.newStock,
+      packagingWeightKg: t.packagingWeightKg || 0.2,
+      totalWeightKg: roundToTwo(weight),
+      performedBy: t.performedBy?.name || "System"
+    };
+  });
+
+  return {
+    summary: {
+      totalTransactions: transactions.length,
+      totalQuantityOut: totalQtyOut,
+      totalParcelWeightKg: roundToTwo(totalParcelWeightKg)
+    },
+    items
+  };
+};
+
+// 4. Customer Orders Report
+const getCustomerOrdersReport = async (query = {}) => {
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  const orders = await prisma.customerOrder.findMany({
+    where: {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.customerId ? { customerId: query.customerId } : {}),
+      ...(createdAt ? { createdAt } : {})
+    },
+    include: {
+      customer: true,
+      orderItems: { include: { product: true } },
+      deliveryNote: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  let grandTotalSum = 0;
+  let totalWeightSum = 0;
+
+  const items = orders.map(o => {
+    const amount = Number(o.totalAmount);
+    grandTotalSum += amount;
+    totalWeightSum += o.totalParcelWeight;
+
+    return {
+      id: o.id,
+      orderNumber: o.orderNumber,
+      date: o.createdAt,
+      customerName: o.customer.fullName,
+      companyName: o.customer.companyName || "N/A",
+      status: o.status,
+      totalItems: o.orderItems.reduce((acc, i) => acc + i.quantity, 0),
+      subtotal: Number(o.subtotal),
+      tax: Number(o.tax),
+      totalAmount: amount,
+      garmentWeightKg: o.garmentWeightKg,
+      packagingWeightKg: o.packagingWeightKg,
+      totalParcelWeight: o.totalParcelWeight,
+      deliveryNoteNumber: o.deliveryNote?.deliveryNoteNumber || "N/A"
+    };
+  });
+
+  return {
+    summary: {
+      totalOrders: orders.length,
+      totalRevenue: roundToTwo(grandTotalSum),
+      totalParcelWeightKg: roundToTwo(totalWeightSum)
+    },
+    items
+  };
+};
+
+// 5. Product Movement Report
+const getProductMovementReport = async (query = {}) => {
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    include: {
+      category: true,
+      transactions: {
+        where: createdAt ? { createdAt } : {}
+      }
+    }
+  });
+
+  const items = products.map(p => {
+    let stockInQty = 0;
+    let stockOutQty = 0;
+
+    p.transactions.forEach(t => {
+      if (t.transactionType === "STOCK_IN") stockInQty += t.quantity;
+      if (t.transactionType === "STOCK_OUT") stockOutQty += t.quantity;
+    });
+
+    return {
+      id: p.id,
+      sku: p.sku,
+      styleNumber: p.styleNumber,
+      productName: p.productName,
+      category: p.category.name,
+      currentStock: p.stockQuantity,
+      stockInQuantity: stockInQty,
+      stockOutQuantity: stockOutQty,
+      netMovement: stockInQty - stockOutQty
+    };
+  });
+
+  return {
+    summary: {
+      totalProductsTracked: products.length
+    },
+    items
+  };
+};
+
+// 6. Low Stock Report
+const getLowStockReport = async () => {
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    include: { category: true }
+  });
+
+  const lowStockItems = products
+    .filter(p => p.stockQuantity <= p.minStockAlert)
+    .map(p => ({
+      id: p.id,
+      sku: p.sku,
+      styleNumber: p.styleNumber,
+      productName: p.productName,
+      category: p.category.name,
+      stockQuantity: p.stockQuantity,
+      minStockAlert: p.minStockAlert,
+      reorderNeeded: Math.max(0, p.minStockAlert * 2 - p.stockQuantity)
+    }));
+
+  return {
+    summary: {
+      totalLowStockProducts: lowStockItems.length
+    },
+    items: lowStockItems
+  };
+};
+
+// 7. Customer Purchase Report
+const getCustomerPurchaseReport = async (query = {}) => {
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  const customers = await prisma.customer.findMany({
+    include: {
+      customerOrders: {
+        where: createdAt ? { createdAt } : {}
+      },
+      stockOuts: {
+        where: createdAt ? { createdAt } : {}
+      }
+    }
+  });
+
+  const items = customers.map(c => {
+    const totalOrderSpend = c.customerOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const totalShipments = c.stockOuts.length;
+
+    return {
+      id: c.id,
+      customerCode: c.customerCode || "N/A",
+      fullName: c.fullName,
+      companyName: c.companyName || "N/A",
+      customerType: c.customerType,
+      email: c.email,
+      phone: c.phoneNumber,
+      totalOrdersCount: c.customerOrders.length,
+      totalOrderSpend: roundToTwo(totalOrderSpend),
+      totalShipmentsReceived: totalShipments
+    };
+  }).sort((a, b) => b.totalOrderSpend - a.totalOrderSpend);
+
+  return {
+    summary: {
+      totalCustomersAnalyzed: customers.length
+    },
+    items
+  };
+};
+
+// 8. Open Orders Report
+const getOpenOrdersReport = async () => {
+  const openOrders = await prisma.customerOrder.findMany({
+    where: {
+      status: { in: ["PENDING", "APPROVED", "PROCESSING"] }
+    },
+    include: {
+      customer: true,
+      orderItems: { include: { product: true } }
+    },
+    orderBy: { createdAt: "asc" }
+  });
+
+  const items = openOrders.map(o => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    date: o.createdAt,
+    customerName: o.customer.fullName,
+    companyName: o.customer.companyName || "N/A",
+    phone: o.customer.phoneNumber,
+    status: o.status,
+    totalItems: o.orderItems.reduce((sum, i) => sum + i.quantity, 0),
+    totalAmount: Number(o.totalAmount),
+    totalParcelWeight: o.totalParcelWeight
   }));
 
-const getMonthlyLeadTrend =
-  async (query) => {
-    const filter = buildDateSqlFilter(
-      "l.\"createdAt\"",
-      query.from,
-      query.to
-    );
-
-    const rows =
-      await prisma.$queryRaw(Prisma.sql`
-        SELECT
-          TO_CHAR(DATE_TRUNC('month', l."createdAt"), 'YYYY-MM') AS month,
-          COUNT(*)::int AS count
-        FROM "Lead" l
-        ${filter}
-        GROUP BY DATE_TRUNC('month', l."createdAt")
-        ORDER BY DATE_TRUNC('month', l."createdAt") ASC
-      `);
-
-    return rows.map((row) => ({
-      month: row.month,
-      count: Number(row.count),
-    }));
+  return {
+    summary: {
+      openOrdersCount: openOrders.length,
+      openOrdersTotalValue: roundToTwo(items.reduce((acc, i) => acc + i.totalAmount, 0))
+    },
+    items
   };
-
-const getMonthlyCustomerGrowth =
-  async (query) => {
-    const filter = buildDateSqlFilter(
-      "c.\"createdAt\"",
-      query.from,
-      query.to
-    );
-
-    const rows =
-      await prisma.$queryRaw(Prisma.sql`
-        SELECT
-          TO_CHAR(DATE_TRUNC('month', c."createdAt"), 'YYYY-MM') AS month,
-          COUNT(*)::int AS customers
-        FROM "customers" c
-        ${filter}
-        GROUP BY DATE_TRUNC('month', c."createdAt")
-        ORDER BY DATE_TRUNC('month', c."createdAt") ASC
-      `);
-
-    return rows.map((row) => ({
-      month: row.month,
-      customers:
-        Number(row.customers),
-    }));
-  };
-
-const getRevenueByMonth =
-  async (query) => {
-    const filter = buildDateSqlFilter(
-      "s.\"createdAt\"",
-      query.from,
-      query.to
-    );
-
-    const rows =
-      await prisma.$queryRaw(Prisma.sql`
-        SELECT
-          TO_CHAR(DATE_TRUNC('month', s."createdAt"), 'YYYY-MM') AS month,
-          COALESCE(SUM(s."grandTotal"), 0)::float AS revenue
-        FROM "sales" s
-        ${filter}
-        GROUP BY DATE_TRUNC('month', s."createdAt")
-        ORDER BY DATE_TRUNC('month', s."createdAt") ASC
-      `);
-
-    return formatMonthRows(
-      rows,
-      "revenue"
-    );
-  };
-
-const getCrmOverview =
-  async (query = {}) => {
-    const leadWhere =
-      buildLeadWhere(query);
-    const customerWhere =
-      buildCustomerWhere(query);
-    const saleWhere =
-      buildSaleWhere(query);
-
-    const [
-      totalCustomers,
-      totalLeads,
-      newLeads,
-      wonLeads,
-      lostLeads,
-      expectedRevenueAggregate,
-      closedRevenueAggregate,
-    ] = await Promise.all([
-      prisma.customer.count({
-        where: customerWhere,
-      }),
-      prisma.lead.count({
-        where: leadWhere,
-      }),
-      prisma.lead.count({
-        where: {
-          ...leadWhere,
-          status: "NEW",
-        },
-      }),
-      prisma.lead.count({
-        where: {
-          ...leadWhere,
-          status: "WON",
-        },
-      }),
-      prisma.lead.count({
-        where: {
-          ...leadWhere,
-          status: "LOST",
-        },
-      }),
-      prisma.lead.aggregate({
-        where: {
-          ...leadWhere,
-          status: {
-            not: "LOST",
-          },
-        },
-        _sum: {
-          expectedDealValue: true,
-        },
-      }),
-      prisma.sale.aggregate({
-        where: saleWhere,
-        _sum: {
-          grandTotal: true,
-        },
-      }),
-    ]);
-
-    const conversionRate =
-      totalLeads > 0
-        ? roundToTwo(
-            (wonLeads / totalLeads) * 100
-          )
-        : 0;
-
-    return {
-      totalCustomers,
-      totalLeads,
-      newLeads,
-      wonLeads,
-      lostLeads,
-      conversionRate,
-      expectedRevenue: roundToTwo(
-        expectedRevenueAggregate._sum
-          .expectedDealValue
-      ),
-      revenueGenerated: roundToTwo(
-        closedRevenueAggregate._sum
-          .grandTotal
-      ),
-    };
-  };
-
-const getLeadAnalytics =
-  async (query = {}) => {
-    const leadWhere =
-      buildLeadWhere(query);
-
-    const [
-      leadsByStatusRaw,
-      leadsBySourceRaw,
-      monthlyTrend,
-      totalLeads,
-    ] = await Promise.all([
-      prisma.lead.groupBy({
-        by: ["status"],
-        where: leadWhere,
-        _count: {
-          status: true,
-        },
-      }),
-      prisma.lead.groupBy({
-        by: ["source"],
-        where: leadWhere,
-        _count: {
-          source: true,
-        },
-      }),
-      getMonthlyLeadTrend(query),
-      prisma.lead.count({
-        where: leadWhere,
-      }),
-    ]);
-
-    const statusMap = new Map(
-      leadsByStatusRaw.map((item) => [
-        item.status,
-        item._count.status,
-      ])
-    );
-
-    const sourceMap = new Map(
-      leadsBySourceRaw.map((item) => [
-        item.source,
-        item._count.source,
-      ])
-    );
-
-    const leadsByStatus =
-      LEAD_STATUS_ORDER.map((status) => ({
-        status,
-        count:
-          statusMap.get(status) || 0,
-      }));
-
-    const leadsBySource =
-      LEAD_SOURCE_ORDER.map((source) => ({
-        source,
-        count:
-          sourceMap.get(source) || 0,
-      }));
-
-    const funnel = [
-      "NEW",
-      "CONTACTED",
-      "QUALIFIED",
-      "PROPOSAL_SENT",
-      "NEGOTIATION",
-      "WON",
-    ].map((stage) => ({
-      stage,
-      count:
-        statusMap.get(stage) || 0,
-    }));
-
-    return {
-      summary: {
-        totalLeads,
-        wonLeads:
-          statusMap.get("WON") || 0,
-        lostLeads:
-          statusMap.get("LOST") || 0,
-      },
-      leadsByStatus,
-      leadsBySource,
-      monthlyLeadCreationTrend:
-        monthlyTrend,
-      leadConversionFunnel: funnel,
-    };
-  };
-
-const getCustomerAnalytics =
-  async (query = {}) => {
-    const customerWhere =
-      buildCustomerWhere(query);
-    const saleWhere =
-      buildSaleWhere(query);
-    const limit = query.limit || 5;
-
-    const [
-      totalActiveCustomers,
-      customerTypesRaw,
-      topCustomersRaw,
-      monthlyCustomerGrowth,
-      revenueAggregate,
-    ] = await Promise.all([
-      prisma.customer.count({
-        where: {
-          ...customerWhere,
-          status: "ACTIVE",
-        },
-      }),
-      prisma.customer.groupBy({
-        by: ["customerType"],
-        where: customerWhere,
-        _count: {
-          customerType: true,
-        },
-      }),
-      prisma.customer.findMany({
-        where: {
-          ...customerWhere,
-          sales: query.from || query.to
-            ? {
-                some: {
-                  createdAt:
-                    buildCreatedAtFilter(
-                      query.from,
-                      query.to
-                    ),
-                },
-              }
-            : undefined,
-        },
-        select: {
-          id: true,
-          fullName: true,
-          companyName: true,
-          customerType: true,
-          totalSpent: true,
-          totalOrders: true,
-          sales: {
-            where: saleWhere,
-            select: {
-              grandTotal: true,
-            },
-          },
-        },
-      }),
-      getMonthlyCustomerGrowth(query),
-      prisma.sale.aggregate({
-        where: {
-          ...saleWhere,
-          customerId: {
-            not: null,
-          },
-        },
-        _sum: {
-          grandTotal: true,
-        },
-      }),
-    ]);
-
-    const customerTypeMap =
-      new Map(
-        customerTypesRaw.map((item) => [
-          item.customerType,
-          item._count.customerType,
-        ])
-      );
-
-    const customersByType =
-      CUSTOMER_TYPE_ORDER.map((type) => ({
-        type,
-        count:
-          customerTypeMap.get(type) || 0,
-      }));
-
-    const topCustomers =
-      topCustomersRaw
-        .map((customer) => {
-          const revenue =
-            customer.sales.reduce(
-              (sum, sale) =>
-                sum +
-                toNumber(
-                  sale.grandTotal
-                ),
-              0
-            );
-
-          return {
-            id: customer.id,
-            fullName:
-              customer.fullName,
-            companyName:
-              customer.companyName,
-            customerType:
-              customer.customerType,
-            totalOrders:
-              customer.totalOrders,
-            revenue:
-              roundToTwo(revenue),
-          };
-        })
-        .sort(
-          (a, b) =>
-            b.revenue - a.revenue
-        )
-        .slice(0, limit);
-
-    return {
-      summary: {
-        totalActiveCustomers,
-        totalCustomerRevenue:
-          roundToTwo(
-            revenueAggregate._sum
-              .grandTotal
-          ),
-      },
-      customersByType,
-      topCustomersByRevenue:
-        topCustomers,
-      monthlyCustomerGrowth,
-    };
-  };
-
-const getRevenueAnalytics =
-  async (query = {}) => {
-    const leadWhere =
-      buildLeadWhere(query);
-    const saleWhere =
-      buildSaleWhere(query);
-
-    const [
-      expectedRevenueAggregate,
-      closedRevenueAggregate,
-      revenueByMonth,
-      customerRevenueRaw,
-    ] = await Promise.all([
-      prisma.lead.aggregate({
-        where: {
-          ...leadWhere,
-          status: {
-            not: "LOST",
-          },
-        },
-        _sum: {
-          expectedDealValue: true,
-        },
-      }),
-      prisma.sale.aggregate({
-        where: saleWhere,
-        _sum: {
-          grandTotal: true,
-        },
-      }),
-      getRevenueByMonth(query),
-      prisma.sale.findMany({
-        where: saleWhere,
-        select: {
-          grandTotal: true,
-          customer: {
-            select: {
-              customerType: true,
-            },
-          },
-        },
-      }),
-    ]);
-
-    const revenueBuckets = {
-      REGULAR: 0,
-      WHOLESALE: 0,
-      VIP: 0,
-      UNASSIGNED: 0,
-    };
-
-    for (const sale of customerRevenueRaw) {
-      const bucket =
-        sale.customer?.customerType ||
-        "UNASSIGNED";
-
-      revenueBuckets[bucket] +=
-        toNumber(sale.grandTotal);
-    }
-
-    return {
-      expectedRevenue: roundToTwo(
-        expectedRevenueAggregate._sum
-          .expectedDealValue
-      ),
-      closedRevenue: roundToTwo(
-        closedRevenueAggregate._sum
-          .grandTotal
-      ),
-      revenueByMonth,
-      revenueByCustomerType:
-        Object.entries(
-          revenueBuckets
-        ).map(([type, revenue]) => ({
-          type,
-          revenue: roundToTwo(
-            revenue
-          ),
-        })),
-    };
-  };
-
-const getSalesAnalytics =
-  async (query = {}) => {
-    const saleWhere =
-      buildSaleWhere(query);
-
-    const [
-      salesAggregate,
-      totalOrders,
-      monthlySalesTrend,
-    ] = await Promise.all([
-      prisma.sale.aggregate({
-        where: saleWhere,
-        _sum: {
-          grandTotal: true,
-        },
-        _avg: {
-          grandTotal: true,
-        },
-      }),
-      prisma.sale.count({
-        where: saleWhere,
-      }),
-      getRevenueByMonth(query),
-    ]);
-
-    return {
-      totalSales: roundToTwo(
-        salesAggregate._sum.grandTotal
-      ),
-      totalOrders,
-      averageOrderValue: roundToTwo(
-        salesAggregate._avg.grandTotal
-      ),
-      monthlySalesTrend:
-        monthlySalesTrend.map(
-          (item) => ({
-            month: item.month,
-            sales: item.revenue,
-          })
-        ),
-    };
-  };
+};
 
 module.exports = {
   getCrmOverview,
-  getLeadAnalytics,
-  getCustomerAnalytics,
-  getRevenueAnalytics,
-  getSalesAnalytics,
+  getInventoryReport,
+  getStockInReport,
+  getStockOutReport,
+  getCustomerOrdersReport,
+  getProductMovementReport,
+  getLowStockReport,
+  getCustomerPurchaseReport,
+  getOpenOrdersReport
 };

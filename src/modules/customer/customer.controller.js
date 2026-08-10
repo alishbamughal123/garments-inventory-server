@@ -1,4 +1,3 @@
-
 const {
   successResponse,
   handleControllerError,
@@ -10,227 +9,209 @@ const {
   customerInteractionSchema,
 } = require("./customer.validation");
 
-const {
-  createCustomer,
-  getCustomers,
-  getCustomerById,
-  updateCustomer,
-  deleteCustomer,
-  addInteraction,
-  getCustomerInteractions,
-} = require("./customer.service");
+const customerService = require("./customer.service");
 
 /*
 |--------------------------------------------------------------------------
 | CREATE CUSTOMER
 |--------------------------------------------------------------------------
 */
+const createCustomerHandler = async (req, res) => {
+  try {
+    const validatedData = createCustomerSchema.parse(req.body);
+    const result = await customerService.createCustomer({
+      ...validatedData,
+      contacts: req.body.contacts,
+      password: req.body.password,
+      vatNumber: req.body.vatNumber
+    });
 
-const createCustomerHandler =
-  async (req, res) => {
-    try {
-      const validatedData =
-        createCustomerSchema.parse(
-          req.body
-        );
-
-      const result =
-        await createCustomer(
-          validatedData
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Customer created successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+    return successResponse(res, result, "Customer created successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
 | GET CUSTOMERS
 |--------------------------------------------------------------------------
 */
-
-const getCustomersHandler =
-  async (req, res) => {
-    try {
-      const {
-        search,
-        customerType,
-        status,
-      } = req.query;
-
-      const result =
-        await getCustomers(
-          search,
-          customerType,
-          status
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Customers fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const getCustomersHandler = async (req, res) => {
+  try {
+    const { search, customerType, status } = req.query;
+    const result = await customerService.getCustomers(search, customerType, status);
+    return successResponse(res, result, "Customers fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
 | GET CUSTOMER BY ID
 |--------------------------------------------------------------------------
 */
-
-const getCustomerByIdHandler =
-  async (req, res) => {
-    try {
-      const result =
-        await getCustomerById(
-          req.params.id
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Customer fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const getCustomerByIdHandler = async (req, res) => {
+  try {
+    const result = await customerService.getCustomerById(req.params.id);
+    return successResponse(res, result, "Customer fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
 | UPDATE CUSTOMER
 |--------------------------------------------------------------------------
 */
+const updateCustomerHandler = async (req, res) => {
+  try {
+    const validatedData = updateCustomerSchema.parse(req.body);
+    const result = await customerService.updateCustomer(req.params.id, {
+      ...validatedData,
+      password: req.body.password,
+      vatNumber: req.body.vatNumber
+    });
 
-const updateCustomerHandler =
-  async (req, res) => {
-    try {
-      const validatedData =
-        updateCustomerSchema.parse(
-          req.body
-        );
-
-      const result =
-        await updateCustomer(
-          req.params.id,
-          validatedData
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Customer updated successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+    return successResponse(res, result, "Customer updated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
 | DELETE CUSTOMER
 |--------------------------------------------------------------------------
 */
-
-const deleteCustomerHandler =
-  async (req, res) => {
-    try {
-      const result =
-        await deleteCustomer(
-          req.params.id
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Customer deleted successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const deleteCustomerHandler = async (req, res) => {
+  try {
+    const result = await customerService.deleteCustomer(req.params.id);
+    return successResponse(res, result, "Customer deleted successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
-| ADD INTERACTION
+| CONTACT HANDLERS
 |--------------------------------------------------------------------------
 */
+const addContactHandler = async (req, res) => {
+  try {
+    const result = await customerService.addContact(req.params.id, req.body);
+    return successResponse(res, result, "Contact added successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-const addInteractionHandler =
-  async (req, res) => {
-    try {
-      const result =
-        await addInteraction(
-          req.params.id,
-          customerInteractionSchema.parse(
-            req.body
-          ),
-          req.user.id
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Interaction added successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const deleteContactHandler = async (req, res) => {
+  try {
+    const result = await customerService.deleteContact(req.params.contactId);
+    return successResponse(res, result, "Contact deleted successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
-| GET INTERACTIONS
+| CUSTOM PRICING HANDLER
 |--------------------------------------------------------------------------
 */
+const setCustomPricingHandler = async (req, res) => {
+  try {
+    const { prices } = req.body;
+    const result = await customerService.setCustomPricing(req.params.id, prices);
+    return successResponse(res, result, "Custom pricing saved successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-const getInteractionsHandler =
-  async (req, res) => {
-    try {
-      const result =
-        await getCustomerInteractions(
-          req.params.id
-        );
+/*
+|--------------------------------------------------------------------------
+| CATALOG ACCESS HANDLER
+|--------------------------------------------------------------------------
+*/
+const setProductAccessHandler = async (req, res) => {
+  try {
+    const { accessList } = req.body;
+    const result = await customerService.setProductAccess(req.params.id, accessList);
+    return successResponse(res, result, "Product access restrictions updated");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Interactions fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+/*
+|--------------------------------------------------------------------------
+| B2B PORTAL PASSWORD HANDLER
+|--------------------------------------------------------------------------
+*/
+const setPortalAccessHandler = async (req, res) => {
+  try {
+    const { password, isPortalActive } = req.body;
+    const result = await customerService.setPortalAccess(req.params.id, password, isPortalActive);
+    return successResponse(res, result, "Customer portal credentials updated");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GDPR HANDLERS
+|--------------------------------------------------------------------------
+*/
+const exportGDPRHandler = async (req, res) => {
+  try {
+    const data = await customerService.exportGDPRData(req.params.id);
+    return successResponse(res, data, "GDPR Customer data exported");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+const anonymizeGDPRHandler = async (req, res) => {
+  try {
+    const result = await customerService.anonymizeGDPRData(req.params.id);
+    return successResponse(res, result, "Customer data anonymized per GDPR");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| INTERACTIONS HANDLERS
+|--------------------------------------------------------------------------
+*/
+const addInteractionHandler = async (req, res) => {
+  try {
+    const result = await customerService.addInteraction(
+      req.params.id,
+      customerInteractionSchema.parse(req.body),
+      req.user.id
+    );
+    return successResponse(res, result, "Interaction added successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+const getInteractionsHandler = async (req, res) => {
+  try {
+    const result = await customerService.getCustomerInteractions(req.params.id);
+    return successResponse(res, result, "Interactions fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 module.exports = {
   createCustomerHandler,
@@ -238,6 +219,13 @@ module.exports = {
   getCustomerByIdHandler,
   updateCustomerHandler,
   deleteCustomerHandler,
+  addContactHandler,
+  deleteContactHandler,
+  setCustomPricingHandler,
+  setProductAccessHandler,
+  setPortalAccessHandler,
+  exportGDPRHandler,
+  anonymizeGDPRHandler,
   addInteractionHandler,
   getInteractionsHandler,
 };

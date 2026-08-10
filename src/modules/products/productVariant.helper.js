@@ -162,6 +162,10 @@ const normalizeProductPayload = (
       normalizeSpaces(
         payload.fabricWeight
       ) || null,
+    weightInKg:
+      payload.weightInKg !== undefined && payload.weightInKg !== null
+        ? Number(payload.weightInKg)
+        : 0.0,
     supplierBarcode:
       payload.supplierBarcode?.trim() || null,
   };

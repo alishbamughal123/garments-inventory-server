@@ -1,10 +1,6 @@
-
 const express = require("express");
-
 const router = express.Router();
-
-const authMiddleware =
-  require("../../middlewares/auth.middleware");
+const authMiddleware = require("../../middlewares/auth.middleware");
 
 const {
   createCustomerHandler,
@@ -12,62 +8,43 @@ const {
   getCustomerByIdHandler,
   updateCustomerHandler,
   deleteCustomerHandler,
+  addContactHandler,
+  deleteContactHandler,
+  setCustomPricingHandler,
+  setProductAccessHandler,
+  setPortalAccessHandler,
+  exportGDPRHandler,
+  anonymizeGDPRHandler,
   addInteractionHandler,
   getInteractionsHandler,
 } = require("./customer.controller");
 
 /*
 |--------------------------------------------------------------------------
-| CUSTOMERS
+| CUSTOMER MANAGEMENT ROUTES
 |--------------------------------------------------------------------------
 */
+router.post("/", authMiddleware, createCustomerHandler);
+router.get("/", authMiddleware, getCustomersHandler);
+router.get("/:id", authMiddleware, getCustomerByIdHandler);
+router.patch("/:id", authMiddleware, updateCustomerHandler);
+router.delete("/:id", authMiddleware, deleteCustomerHandler);
 
-router.post(
-  "/",
-  authMiddleware,
-  createCustomerHandler
-);
+// Contacts
+router.post("/:id/contacts", authMiddleware, addContactHandler);
+router.delete("/:id/contacts/:contactId", authMiddleware, deleteContactHandler);
 
-router.get(
-  "/",
-  authMiddleware,
-  getCustomersHandler
-);
+// Custom Pricing & Product Access
+router.post("/:id/pricing", authMiddleware, setCustomPricingHandler);
+router.post("/:id/product-access", authMiddleware, setProductAccessHandler);
+router.post("/:id/portal-access", authMiddleware, setPortalAccessHandler);
 
-router.get(
-  "/:id",
-  authMiddleware,
-  getCustomerByIdHandler
-);
+// GDPR Compliance
+router.get("/:id/gdpr-export", authMiddleware, exportGDPRHandler);
+router.post("/:id/gdpr-anonymize", authMiddleware, anonymizeGDPRHandler);
 
-router.patch(
-  "/:id",
-  authMiddleware,
-  updateCustomerHandler
-);
-
-router.delete(
-  "/:id",
-  authMiddleware,
-  deleteCustomerHandler
-);
-
-/*
-|--------------------------------------------------------------------------
-| CUSTOMER INTERACTIONS
-|--------------------------------------------------------------------------
-*/
-
-router.post(
-  "/:id/interactions",
-  authMiddleware,
-  addInteractionHandler
-);
-
-router.get(
-  "/:id/interactions",
-  authMiddleware,
-  getInteractionsHandler
-);
+// Interactions
+router.post("/:id/interactions", authMiddleware, addInteractionHandler);
+router.get("/:id/interactions", authMiddleware, getInteractionsHandler);
 
 module.exports = router;

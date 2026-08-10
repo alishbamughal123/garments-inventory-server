@@ -104,6 +104,9 @@ const createProduct = async (
               fabricWeight:
                 normalizedPayload.fabricWeight,
 
+              weightInKg:
+                normalizedPayload.weightInKg || 0,
+
               purchasePrice:
                 normalizedPayload.purchasePrice,
 
@@ -418,6 +421,9 @@ const updateProduct = async (
 
       fabricWeight:
         normalizedPayload.fabricWeight,
+
+      weightInKg:
+        normalizedPayload.weightInKg !== undefined ? normalizedPayload.weightInKg : product.weightInKg,
 
       purchasePrice:
         normalizedPayload.purchasePrice,

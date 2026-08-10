@@ -13,6 +13,7 @@ const taskRoutes = require("../modules/task/task.routes");
 const activityRoutes = require("../modules/activity/activity.routes");
 const emailRoutes = require("../modules/email/email.routes");
 const supportRoutes = require("../modules/support/support.routes");
+const portalRoutes = require("../modules/portal/portal.routes");
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use("/tasks", taskRoutes);
 router.use("/activities", activityRoutes);
 router.use("/emails", emailRoutes);
 router.use("/support", supportRoutes);
+router.use("/portal", portalRoutes);
 
 module.exports = router;

@@ -1,140 +1,95 @@
-const {
-  successResponse,
-  handleControllerError,
-} = require("../../utils/responseHandler");
-const {
-  reportsQuerySchema,
-} = require("./reports.validation");
-const {
-  getCrmOverview,
-  getLeadAnalytics,
-  getCustomerAnalytics,
-  getRevenueAnalytics,
-  getSalesAnalytics,
-} = require("./reports.service");
+const { successResponse, handleControllerError } = require("../../utils/responseHandler");
+const reportsService = require("./reports.service");
 
-const parseQuery = (query) =>
-  reportsQuerySchema.parse(query);
+const getCrmOverviewHandler = async (req, res) => {
+  try {
+    const result = await reportsService.getCrmOverview(req.query);
+    return successResponse(res, result, "CRM overview fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-const getCrmOverviewHandler =
-  async (req, res) => {
-    try {
-      const validatedQuery =
-        parseQuery(req.query);
-      const result =
-        await getCrmOverview(
-          validatedQuery
-        );
+const getInventoryReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getInventoryReport(req.query);
+    return successResponse(res, report, "Inventory report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "CRM overview fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const getStockInReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getStockInReport(req.query);
+    return successResponse(res, report, "Stock In report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-const getLeadAnalyticsHandler =
-  async (req, res) => {
-    try {
-      const validatedQuery =
-        parseQuery(req.query);
-      const result =
-        await getLeadAnalytics(
-          validatedQuery
-        );
+const getStockOutReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getStockOutReport(req.query);
+    return successResponse(res, report, "Stock Out report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Lead analytics fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const getCustomerOrdersReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getCustomerOrdersReport(req.query);
+    return successResponse(res, report, "Customer Orders report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-const getCustomerAnalyticsHandler =
-  async (req, res) => {
-    try {
-      const validatedQuery =
-        parseQuery(req.query);
-      const result =
-        await getCustomerAnalytics(
-          validatedQuery
-        );
+const getProductMovementReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getProductMovementReport(req.query);
+    return successResponse(res, report, "Product Movement report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Customer analytics fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const getLowStockReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getLowStockReport();
+    return successResponse(res, report, "Low Stock report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-const getRevenueAnalyticsHandler =
-  async (req, res) => {
-    try {
-      const validatedQuery =
-        parseQuery(req.query);
-      const result =
-        await getRevenueAnalytics(
-          validatedQuery
-        );
+const getCustomerPurchaseReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getCustomerPurchaseReport(req.query);
+    return successResponse(res, report, "Customer Purchase report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
-      return successResponse(
-        res,
-        result,
-        "Revenue analytics fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
-
-const getSalesAnalyticsHandler =
-  async (req, res) => {
-    try {
-      const validatedQuery =
-        parseQuery(req.query);
-      const result =
-        await getSalesAnalytics(
-          validatedQuery
-        );
-
-      return successResponse(
-        res,
-        result,
-        "Sales analytics fetched successfully"
-      );
-    } catch (error) {
-      return handleControllerError(
-        res,
-        error
-      );
-    }
-  };
+const getOpenOrdersReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getOpenOrdersReport();
+    return successResponse(res, report, "Open Orders report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 module.exports = {
   getCrmOverviewHandler,
-  getLeadAnalyticsHandler,
-  getCustomerAnalyticsHandler,
-  getRevenueAnalyticsHandler,
-  getSalesAnalyticsHandler,
+  getInventoryReportHandler,
+  getStockInReportHandler,
+  getStockOutReportHandler,
+  getCustomerOrdersReportHandler,
+  getProductMovementReportHandler,
+  getLowStockReportHandler,
+  getCustomerPurchaseReportHandler,
+  getOpenOrdersReportHandler
 };
