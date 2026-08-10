@@ -9,35 +9,28 @@ const env = require("./config/env");
 
 const app = express();
 
-// Dynamic CORS Origin Validator
-const isAllowedOrigin = (origin) => {
-  if (!origin) return true; // Allow non-browser requests (Postman, server-to-server)
-  
-  if (env.corsOrigins.includes(origin) || env.corsOrigins.includes("*")) {
-    return true;
+/*
+|--------------------------------------------------------------------------
+| BULLETPROOF CORS HEADER MIDDLEWARE
+|--------------------------------------------------------------------------
+| Guarantees Access-Control-Allow-Origin on all endpoints and OPTIONS preflights
+*/
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  res.header("Access-Control-Allow-Origin", origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
   }
-  
-  // Allow all Vercel deployments & localhost variations
-  if (
-    origin.endsWith(".vercel.app") ||
-    origin.includes("localhost") ||
-    origin.includes("127.0.0.1")
-  ) {
-    return true;
-  }
-  
-  return true; // Fallback to allow cross-origin requests cleanly
-};
+  next();
+});
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
-    },
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
