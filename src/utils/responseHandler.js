@@ -42,6 +42,12 @@ const handleControllerError = (
   if (
     /invalid credentials/i.test(
       error?.message || ""
+    ) ||
+    /invalid email/i.test(
+      error?.message || ""
+    ) ||
+    /disabled/i.test(
+      error?.message || ""
     )
   ) {
     return errorResponse(

@@ -14,43 +14,84 @@ const portalLogin = async (emailOrPhone, password) => {
       OR: [
         { email: emailOrPhone },
         { phoneNumber: emailOrPhone }
-      ],
-      isPortalActive: true,
-      status: "ACTIVE"
+      ]
     }
   });
 
-  if (!customer || !customer.passwordHash) {
-    throw new Error("Invalid login credentials or portal access disabled.");
-  }
-
-  const isMatch = await bcrypt.compare(password, customer.passwordHash);
-  if (!isMatch) {
-    throw new Error("Invalid email/phone or password.");
-  }
-
-  const token = jwt.sign(
-    {
-      id: customer.id,
-      email: customer.email,
-      fullName: customer.fullName,
-      role: "CUSTOMER"
-    },
-    process.env.JWT_SECRET || "default_jwt_secret_key_123",
-    { expiresIn: "7d" }
-  );
-
-  return {
-    token,
-    user: {
-      id: customer.id,
-      name: customer.fullName,
-      email: customer.email,
-      companyName: customer.companyName,
-      role: "CUSTOMER",
-      customerCode: customer.customerCode
+  if (customer) {
+    if (!customer.isPortalActive || customer.status !== "ACTIVE") {
+      throw new Error("Portal access disabled for this account.");
     }
-  };
+
+    if (!customer.passwordHash) {
+      throw new Error("Invalid login credentials.");
+    }
+
+    const isMatch = await bcrypt.compare(password, customer.passwordHash);
+    if (!isMatch) {
+      throw new Error("Invalid login credentials.");
+    }
+
+    const token = jwt.sign(
+      {
+        id: customer.id,
+        email: customer.email,
+        fullName: customer.fullName,
+        role: "CUSTOMER"
+      },
+      process.env.JWT_SECRET || "default_jwt_secret_key_123",
+      { expiresIn: "7d" }
+    );
+
+    return {
+      token,
+      user: {
+        id: customer.id,
+        name: customer.fullName,
+        email: customer.email,
+        companyName: customer.companyName,
+        role: "CUSTOMER",
+        customerCode: customer.customerCode
+      }
+    };
+  }
+
+  // Fallback: check if an admin/staff User is logging in
+  const user = await prisma.user.findUnique({
+    where: { email: emailOrPhone }
+  });
+
+  if (user) {
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      throw new Error("Invalid login credentials.");
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        fullName: user.name,
+        role: user.role
+      },
+      process.env.JWT_SECRET || "default_jwt_secret_key_123",
+      { expiresIn: "7d" }
+    );
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        companyName: "Internal Staff",
+        role: user.role,
+        customerCode: "STAFF"
+      }
+    };
+  }
+
+  throw new Error("Invalid login credentials.");
 };
 
 /*

@@ -1,5 +1,5 @@
 const portalService = require("./portal.service");
-const { successResponse, errorResponse } = require("../../utils/responseHandler");
+const { successResponse, errorResponse, handleControllerError } = require("../../utils/responseHandler");
 
 /*
 |--------------------------------------------------------------------------
@@ -8,14 +8,16 @@ const { successResponse, errorResponse } = require("../../utils/responseHandler"
 */
 const loginCustomer = async (req, res) => {
   try {
-    const { emailOrPhone, password } = req.body;
-    if (!emailOrPhone || !password) {
-      return errorResponse(res, "Email/phone and password are required.");
+    const { emailOrPhone, email, phone, password } = req.body;
+    const loginIdentifier = emailOrPhone || email || phone;
+    if (!loginIdentifier || !password) {
+      return errorResponse(res, "Email/phone and password are required.", 400);
     }
-    const result = await portalService.portalLogin(emailOrPhone, password);
+    const result = await portalService.portalLogin(loginIdentifier, password);
     return successResponse(res, result, "Login successful");
   } catch (error) {
-    return errorResponse(res, error.message);
+    console.error("Portal Login Error:", error);
+    return handleControllerError(res, error);
   }
 };
 
@@ -29,7 +31,7 @@ const registerCustomer = async (req, res) => {
     const result = await portalService.registerCustomer(req.body);
     return successResponse(res, result, "Customer registration successful!");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -44,7 +46,7 @@ const googleAuthCustomer = async (req, res) => {
     const result = await portalService.googleAuthCustomer(email, name, googleId);
     return successResponse(res, result, "Google authentication successful!");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
