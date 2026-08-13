@@ -1,6 +1,5 @@
 
-const prisma =
-  require("../../config/db");
+const prisma = require("../../config/db");
 
 /*
 |--------------------------------------------------------------------------
@@ -8,221 +7,140 @@ const prisma =
 |--------------------------------------------------------------------------
 */
 
-const createSale =
-  async (payload,  userId) => {
-    const {
-      customerId,
-      subtotal,
-      discount = 0,
-      tax = 0,
-      grandTotal,
-      paymentMethod,
-      notes,
-      items,
-    } = payload;
+const createSale = async (payload, userId) => {
+  const {
+    customerId,
+    subtotal,
+    discount = 0,
+    tax = 0,
+    grandTotal,
+    paymentMethod,
+    notes,
+    items,
+  } = payload;
 
-    const invoiceNumber =
-      `INV-${Date.now()}`;
+  const invoiceNumber = `INV-${Date.now()}`;
 
-    const result =
-      await prisma.$transaction(
-        async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
+    let effectiveUserId = userId;
+    if (!effectiveUserId) {
+      const defaultUser = await tx.user.findFirst();
+      effectiveUserId = defaultUser?.id;
+    }
 
-          /*
-          |--------------------------------------------------------------------------
-          | STOCK VALIDATION
-          |--------------------------------------------------------------------------
-          */
+    if (!effectiveUserId) {
+      throw new Error("No active user found to perform sale transaction");
+    }
 
-          for (const item of items) {
-            const product =
-              await tx.product.findUnique(
-                {
-                  where: {
-                    id: item.productId,
-                  },
-                }
-              );
+    /*
+    |--------------------------------------------------------------------------
+    | STOCK VALIDATION
+    |--------------------------------------------------------------------------
+    */
 
-            if (!product) {
-              throw new Error(
-                "Product not found"
-              );
-            }
+    for (const item of items) {
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+      });
 
-            if (
-              product.stockQuantity <
-              item.quantity
-            ) {
-              throw new Error(
-                `${product.productName} is out of stock`
-              );
-            }
-          }
+      if (!product) {
+        throw new Error("Product not found");
+      }
 
-          /*
-          |--------------------------------------------------------------------------
-          | CREATE SALE
-          |--------------------------------------------------------------------------
-          */
+      if (product.stockQuantity < item.quantity) {
+        throw new Error(`${product.productName} is out of stock`);
+      }
+    }
 
-          const sale =
-            await tx.sale.create({
-              data: {
-                invoiceNumber,
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE SALE
+    |--------------------------------------------------------------------------
+    */
 
-                customerId,
+    const sale = await tx.sale.create({
+      data: {
+        invoiceNumber,
+        customerId,
+        subtotal,
+        discount,
+        tax,
+        grandTotal,
+        paymentMethod,
+        notes,
+      },
+    });
 
-                subtotal,
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE SALE ITEMS & STOCK OUT TRANSACTIONS
+    |--------------------------------------------------------------------------
+    */
 
-                discount,
+    for (const item of items) {
+      await tx.saleItem.create({
+        data: {
+          saleId: sale.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: Number(item.unitPrice),
+          total: Number(item.quantity) * Number(item.unitPrice),
+        },
+      });
 
-                tax,
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+      });
 
-                grandTotal,
+      const prevStock = product ? product.stockQuantity : 0;
+      const newStock = prevStock - item.quantity;
 
-                paymentMethod,
+      await tx.product.update({
+        where: { id: item.productId },
+        data: {
+          stockQuantity: newStock,
+        },
+      });
 
-                notes,
-              },
-            });
+      await tx.inventoryTransaction.create({
+        data: {
+          transactionType: "STOCK_OUT",
+          quantity: item.quantity,
+          previousStock: prevStock,
+          newStock: newStock,
+          productId: item.productId,
+          performedById: effectiveUserId,
+        },
+      });
+    }
 
-          /*
-          |--------------------------------------------------------------------------
-          | CREATE SALE ITEMS
-          |--------------------------------------------------------------------------
-          */
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE CUSTOMER DATA
+    |--------------------------------------------------------------------------
+    */
 
-          for (const item of items) {
+    if (customerId) {
+      const customer = await tx.customer.findUnique({
+        where: { id: customerId },
+      });
 
-        
-await tx.saleItem.create({
-  data: {
-    saleId: sale.id,
+      if (customer) {
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            totalOrders: customer.totalOrders + 1,
+            totalSpent: customer.totalSpent + grandTotal,
+          },
+        });
+      }
+    }
 
-    productId:
-      item.productId,
+    return sale;
+  });
 
-    quantity:
-      item.quantity,
-
-   
-price:
-  Number(item.unitPrice),
-
-total:
-  Number(item.quantity) *
-  Number(item.unitPrice),
-  },
-});
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | UPDATE PRODUCT STOCK
-            |--------------------------------------------------------------------------
-            */
-
-            const product =
-              await tx.product.findUnique(
-                {
-                  where: {
-                    id: item.productId,
-                  },
-                }
-              );
-
-            await tx.product.update({
-              where: {
-                id: item.productId,
-              },
-
-              data: {
-                stockQuantity:
-                  product.stockQuantity -
-                  item.quantity,
-              },
-            });
-
-            /*
-            |--------------------------------------------------------------------------
-            | CREATE INVENTORY TRANSACTION
-            |--------------------------------------------------------------------------
-            */
-
-          
-await tx.inventoryTransaction.create(
-  {
-    data: {
-      transactionType:
-        "STOCK_OUT",
-
-      quantity:
-        item.quantity,
-
-      previousStock:
-        product.stockQuantity,
-
-      newStock:
-        product.stockQuantity -
-        item.quantity,
-
-      productId:
-        item.productId,
-
-      performedById:
-        userId,
-    },
-  }
-);
-
-
-          }
-
-          /*
-          |--------------------------------------------------------------------------
-          | UPDATE CUSTOMER DATA
-          |--------------------------------------------------------------------------
-          */
-
-          if (customerId) {
-            const customer =
-              await tx.customer.findUnique(
-                {
-                  where: {
-                    id: customerId,
-                  },
-                }
-              );
-
-            if (customer) {
-              await tx.customer.update(
-                {
-                  where: {
-                    id: customerId,
-                  },
-
-                  data: {
-                    totalOrders:
-                      customer.totalOrders +
-                      1,
-
-                    totalSpent:
-                      customer.totalSpent +
-                      grandTotal,
-                  },
-                }
-              );
-            }
-          }
-
-          return sale;
-        }
-      );
-
-    return result;
-  };
+  return result;
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -232,33 +150,23 @@ await tx.inventoryTransaction.create(
 
 const getSales = async () => {
   try {
-
-    const sales =
-      await prisma.sale.findMany({
-        include: {
-          customer: true,
-
-          saleItems: {
-            include: {
-              product: true,
-            },
+    const sales = await prisma.sale.findMany({
+      include: {
+        customer: true,
+        saleItems: {
+          include: {
+            product: true,
           },
         },
-
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     return sales;
-
   } catch (error) {
-
-    console.log(
-      "GET SALES ERROR:",
-      error
-    );
-
+    console.log("GET SALES ERROR:", error);
     throw error;
   }
 };
@@ -269,33 +177,25 @@ const getSales = async () => {
 |--------------------------------------------------------------------------
 */
 
-const getSaleById =
-  async (id) => {
-    const sale =
-      await prisma.sale.findUnique(
-        {
-          where: { id },
+const getSaleById = async (id) => {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+    include: {
+      customer: true,
+      saleItems: {
+        include: {
+          product: true,
+        },
+      },
+    },
+  });
 
-          include: {
-            customer: true,
+  if (!sale) {
+    throw new Error("Sale not found");
+  }
 
-            saleItems: {
-              include: {
-                product: true,
-              },
-            },
-          },
-        }
-      );
-
-    if (!sale) {
-      throw new Error(
-        "Sale not found"
-      );
-    }
-
-    return sale;
-  };
+  return sale;
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -303,7 +203,7 @@ const getSaleById =
 |--------------------------------------------------------------------------
 */
 
-const deleteSale = async (id) => {
+const deleteSale = async (id, userId) => {
   const sale = await prisma.sale.findUnique({
     where: { id },
     include: {
@@ -317,27 +217,41 @@ const deleteSale = async (id) => {
   }
 
   return await prisma.$transaction(async (tx) => {
+    let effectiveUserId = userId;
+    if (!effectiveUserId) {
+      const defaultUser = await tx.user.findFirst();
+      effectiveUserId = defaultUser?.id;
+    }
+
+    if (!effectiveUserId) {
+      throw new Error("No active user found to perform stock reversion");
+    }
+
     // 1. REVERT STOCK FOR EACH ITEM
     for (const item of sale.saleItems) {
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+      });
+
+      const prevStock = product ? product.stockQuantity : 0;
+      const newStock = prevStock + item.quantity;
+
       await tx.product.update({
         where: { id: item.productId },
         data: {
-          stockQuantity: {
-            increment: item.quantity,
-          },
+          stockQuantity: newStock,
         },
       });
 
-      // Optional: Add a transaction record for the reversal
       await tx.inventoryTransaction.create({
         data: {
           transactionType: "ADJUSTMENT",
           quantity: item.quantity,
-          previousStock: 0, // Placeholder
-          newStock: 0, // Placeholder
+          previousStock: prevStock,
+          newStock: newStock,
           notes: `Reversion from deleted sale ${sale.invoiceNumber}`,
           productId: item.productId,
-          performedById: "SYSTEM", // Or pass userId if available
+          performedById: effectiveUserId,
         },
       });
     }
@@ -347,17 +261,13 @@ const deleteSale = async (id) => {
       await tx.customer.update({
         where: { id: sale.customerId },
         data: {
-          totalOrders: {
-            decrement: 1,
-          },
-          totalSpent: {
-            decrement: sale.grandTotal,
-          },
+          totalOrders: Math.max(0, sale.customer.totalOrders - 1),
+          totalSpent: Math.max(0, sale.customer.totalSpent - sale.grandTotal),
         },
       });
     }
 
-    // 3. DELETE SALE ITEMS FIRST (Cascade might not be set)
+    // 3. DELETE SALE ITEMS FIRST
     await tx.saleItem.deleteMany({
       where: { saleId: id },
     });
@@ -384,7 +294,6 @@ const updateSale = async (id, payload) => {
     throw new Error("Sale not found");
   }
 
-  // Update only non-calculated fields to maintain integrity
   return await prisma.sale.update({
     where: { id },
     data: {
@@ -401,3 +310,4 @@ module.exports = {
   deleteSale,
   updateSale,
 };
+

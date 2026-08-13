@@ -75,7 +75,7 @@ const getSingleSale = async (req, res) => {
 
 const removeSale = async (req, res) => {
   try {
-    await deleteSale(req.params.id);
+    await deleteSale(req.params.id, req.user?.id);
     return successResponse(res, null, "Sale deleted successfully");
   } catch (error) {
     return handleControllerError(res, error);
