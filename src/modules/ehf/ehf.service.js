@@ -66,6 +66,16 @@ const processIncomingEhfOrder = async (xmlString, peppolMessageId) => {
   return { order, ehfDocument: ehfDoc };
 };
 
+const escapeXml = (str) => {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+};
+
 /**
  * Generate EHF Despatch Advice (EHF Pakkeseddel 3.0) XML for Peppol network
  */
@@ -92,13 +102,13 @@ const generateEhfDespatchAdviceXml = async (orderId) => {
   xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
   <cbc:CustomizationID>urn:fdc:peppol.eu:poacc:trns:despatch_advice:3</cbc:CustomizationID>
   <cbc:ProfileID>urn:fdc:peppol.eu:poacc:bis:despatch_advice:3</cbc:ProfileID>
-  <cbc:ID>${despatchNoteNum}</cbc:ID>
+  <cbc:ID>${escapeXml(despatchNoteNum)}</cbc:ID>
   <cbc:IssueDate>${issueDate}</cbc:IssueDate>
   <cbc:DespatchAdviceTypeCode>102</cbc:DespatchAdviceTypeCode>
   <cbc:Note>Nordic Prowear Electronic Packing Slip</cbc:Note>
   
   <cac:OrderReference>
-    <cbc:ID>${order.orderNumber}</cbc:ID>
+    <cbc:ID>${escapeXml(order.orderNumber)}</cbc:ID>
   </cac:OrderReference>
 
   <cac:DespatchSupplierParty>
@@ -110,8 +120,8 @@ const generateEhfDespatchAdviceXml = async (orderId) => {
 
   <cac:DeliveryCustomerParty>
     <cac:Party>
-      <cbc:EndpointID schemeID="NO:ORGNR">${order.customer.vatNumber || "940029191"}</cbc:EndpointID>
-      <cac:PartyName><cbc:Name>${order.customer.companyName || order.customer.fullName}</cbc:Name></cac:PartyName>
+      <cbc:EndpointID schemeID="NO:ORGNR">${escapeXml(order.customer.vatNumber || "940029191")}</cbc:EndpointID>
+      <cac:PartyName><cbc:Name>${escapeXml(order.customer.companyName || order.customer.fullName)}</cbc:Name></cac:PartyName>
     </cac:Party>
   </cac:DeliveryCustomerParty>
 
@@ -123,8 +133,8 @@ const generateEhfDespatchAdviceXml = async (orderId) => {
     <cbc:DeliveredQuantity unitCode="PCE">${item.quantity}</cbc:DeliveredQuantity>
     <cac:OrderLineReference><cbc:LineID>${idx + 1}</cbc:LineID></cac:OrderLineReference>
     <cac:Item>
-      <cbc:Name>${item.product.productName}</cbc:Name>
-      <cac:SellersItemIdentification><cbc:ID>${item.product.sku}</cbc:ID></cac:SellersItemIdentification>
+      <cbc:Name>${escapeXml(item.product?.productName || "Workwear Article")}</cbc:Name>
+      <cac:SellersItemIdentification><cbc:ID>${escapeXml(item.product?.sku || "NP-SKU")}</cbc:ID></cac:SellersItemIdentification>
     </cac:Item>
   </cac:DespatchLine>`
     )
