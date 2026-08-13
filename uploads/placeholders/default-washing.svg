@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" rx="16" fill="#F8FAFC"/>
+  <rect x="2" y="2" width="396" height="396" rx="14" stroke="#CBD5E1" stroke-width="4" stroke-dasharray="8 8"/>
+  <!-- Tub symbol -->
+  <path d="M120 150 L140 220 H260 L280 150 H120 Z" fill="#E2E8F0" stroke="#475569" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M140 170 C170 185 230 185 260 170" stroke="#0284C7" stroke-width="4" fill="none"/>
+  <text x="200" y="210" text-anchor="middle" fill="#0F172A" font-family="sans-serif" font-size="20" font-weight="700">40°C</text>
+  <!-- Iron symbol -->
+  <path d="M130 250 H270 C270 250 260 270 220 270 H130 V250 Z" stroke="#475569" stroke-width="4" fill="#E2E8F0"/>
+  <circle cx="160" cy="260" r="3" fill="#475569"/>
+  <!-- Do not bleach cross -->
+  <polygon points="250,240 270,240 260,260" stroke="#475569" stroke-width="3" fill="none"/>
+  <text x="200" y="320" text-anchor="middle" fill="#334155" font-family="sans-serif" font-size="16" font-weight="600">WASHING INSTRUCTIONS</text>
+  <text x="200" y="342" text-anchor="middle" fill="#64748B" font-family="sans-serif" font-size="13">Click or Upload Care Label</text>
+</svg>

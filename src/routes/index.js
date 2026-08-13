@@ -14,6 +14,8 @@ const activityRoutes = require("../modules/activity/activity.routes");
 const emailRoutes = require("../modules/email/email.routes");
 const supportRoutes = require("../modules/support/support.routes");
 const portalRoutes = require("../modules/portal/portal.routes");
+const punchoutRoutes = require("../modules/punchout/punchout.routes");
+const ehfRoutes = require("../modules/ehf/ehf.routes");
 
 const router = express.Router();
 
@@ -32,5 +34,7 @@ router.use("/activities", activityRoutes);
 router.use("/emails", emailRoutes);
 router.use("/support", supportRoutes);
 router.use("/portal", portalRoutes);
+router.use("/punchout", punchoutRoutes);
+router.use("/ehf", ehfRoutes);
 
 module.exports = router;

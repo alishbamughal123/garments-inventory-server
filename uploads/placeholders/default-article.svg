@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" rx="16" fill="#F3F4F6"/>
+  <rect x="2" y="2" width="396" height="396" rx="14" stroke="#E5E7EB" stroke-width="4" stroke-dasharray="8 8"/>
+  <path d="M140 120H260L280 160H240V280H160V160H120L140 120Z" fill="#9CA3AF" stroke="#6B7280" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="200" cy="180" r="28" fill="#E5E7EB" stroke="#6B7280" stroke-width="4"/>
+  <path d="M190 180H210M200 170V190" stroke="#4B5563" stroke-width="4" stroke-linecap="round"/>
+  <text x="200" y="320" text-anchor="middle" fill="#4B5563" font-family="sans-serif" font-size="16" font-weight="600">ARTICLE IMAGE</text>
+  <text x="200" y="342" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif" font-size="13">Click or Upload Photo</text>
+</svg>

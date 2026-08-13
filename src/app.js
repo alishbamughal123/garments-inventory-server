@@ -55,10 +55,13 @@ app.use(
   })
 );
 
+const path = require("path");
+
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Health check endpoint for Railway
 app.get("/health", (req, res) => {

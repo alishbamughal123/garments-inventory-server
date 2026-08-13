@@ -34,6 +34,16 @@ const baseProductSchema =
       z.number().optional(),
     description:
       z.string().optional(),
+    imageUrl:
+      z.string().optional(),
+    washingInstructionsImageUrl:
+      z.string().optional(),
+    washingInstructions:
+      z.string().optional(),
+    isContracted:
+      z.boolean().optional(),
+    logoOptions:
+      z.any().optional(),
     supplierBarcode:
       z.string().optional(),
   })

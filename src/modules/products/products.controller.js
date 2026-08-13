@@ -149,6 +149,31 @@ const remove = async (req, res) => {
   }
 };
 
+const uploadProductImages = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const updateData = {};
+
+    if (req.files?.articleImage && req.files.articleImage[0]) {
+      updateData.imageUrl = `/uploads/articles/${req.files.articleImage[0].filename}`;
+    }
+
+    if (req.files?.washingImage && req.files.washingImage[0]) {
+      updateData.washingInstructionsImageUrl = `/uploads/washing/${req.files.washingImage[0].filename}`;
+    }
+
+    if (req.body.washingInstructions) {
+      updateData.washingInstructions = req.body.washingInstructions;
+    }
+
+    const result = await updateProduct(productId, updateData);
+
+    return successResponse(res, result, "Article images updated successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
 module.exports = {
   create,
   getAll,
@@ -159,4 +184,6 @@ module.exports = {
   update,
   getPriceHistoryHandler,
   remove,
+  uploadProductImages,
 };
+

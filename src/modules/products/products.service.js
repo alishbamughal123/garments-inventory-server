@@ -123,6 +123,21 @@ const createProduct = async (
               description:
                 normalizedPayload.description,
 
+              imageUrl:
+                normalizedPayload.imageUrl || "/uploads/placeholders/default-article.svg",
+
+              washingInstructionsImageUrl:
+                normalizedPayload.washingInstructionsImageUrl || "/uploads/placeholders/default-washing.svg",
+
+              washingInstructions:
+                normalizedPayload.washingInstructions || "40°C Standard Wash - Gentle Cycle. Do Not Bleach. Tumble Dry Low.",
+
+              isContracted:
+                normalizedPayload.isContracted !== undefined ? normalizedPayload.isContracted : false,
+
+              logoOptions:
+                normalizedPayload.logoOptions || { frontLeftChest: true, backText: true, sleeveLogo: false },
+
               categoryId:
                 normalizedPayload.categoryId,
             },
@@ -439,6 +454,21 @@ const updateProduct = async (
 
       description:
         normalizedPayload.description,
+
+      imageUrl:
+        normalizedPayload.imageUrl !== undefined ? normalizedPayload.imageUrl : product.imageUrl,
+
+      washingInstructionsImageUrl:
+        normalizedPayload.washingInstructionsImageUrl !== undefined ? normalizedPayload.washingInstructionsImageUrl : product.washingInstructionsImageUrl,
+
+      washingInstructions:
+        normalizedPayload.washingInstructions !== undefined ? normalizedPayload.washingInstructions : product.washingInstructions,
+
+      isContracted:
+        normalizedPayload.isContracted !== undefined ? normalizedPayload.isContracted : product.isContracted,
+
+      logoOptions:
+        normalizedPayload.logoOptions !== undefined ? normalizedPayload.logoOptions : product.logoOptions,
 
       categoryId:
         normalizedPayload.categoryId,

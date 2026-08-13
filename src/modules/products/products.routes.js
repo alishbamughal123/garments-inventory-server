@@ -96,6 +96,38 @@ router.put(
   update
 );
 
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let dest = "uploads/articles";
+    if (file.fieldname === "washingImage") {
+      dest = "uploads/washing";
+    }
+    fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".png";
+    cb(null, `${req.params.id || "article"}-${Date.now()}-${file.fieldname}${ext}`);
+  },
+});
+
+const upload = multer({ storage });
+
+router.post(
+  "/:id/images",
+  authMiddleware,
+  roleMiddleware("ADMIN", "MANAGER"),
+  upload.fields([
+    { name: "articleImage", maxCount: 1 },
+    { name: "washingImage", maxCount: 1 },
+  ]),
+  require("./products.controller").uploadProductImages
+);
+
 router.delete(
   "/:id",
   authMiddleware,

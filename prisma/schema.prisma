@@ -83,6 +83,10 @@ model Product {
   stockQuantity     Int                    @default(0)
   minStockAlert     Int                    @default(5)
   imageUrl          String?
+  washingInstructionsImageUrl String?
+  washingInstructions String?
+  isContracted      Boolean                @default(false)
+  logoOptions       Json?
   description       String?
   isActive          Boolean                @default(true)
   categoryId        String
@@ -289,6 +293,8 @@ model CustomerOrderItem {
   unitWeight  Float         @default(0)
   totalPrice  Decimal       @db.Decimal(10, 2)
   totalWeight Float         @default(0)
+  selectedLogo String?
+  customNote  String?
 
   order   CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product       @relation(fields: [productId], references: [id])
@@ -848,3 +854,34 @@ model PriceHistory {
   @@index([createdAt])
   @@map("price_histories")
 }
+
+model PunchOutSession {
+  id            String   @id @default(uuid())
+  sessionId     String   @unique
+  buyerCookie   String
+  buyerHookUrl  String
+  protocol      String   @default("cXML")
+  customerId    String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([customerId])
+}
+
+model EhfDocument {
+  id              String   @id @default(uuid())
+  documentType    String   // ORDER, ORDER_CONFIRMATION, DESPATCH_ADVICE
+  direction       String   // INBOUND, OUTBOUND
+  status          String   @default("RECEIVED") // RECEIVED, PROCESSED, SENT, FAILED
+  payloadXml      String   @db.Text
+  orderNumber     String?
+  peppolMessageId String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([documentType])
+  @@index([orderNumber])
+  @@index([createdAt])
+}
+

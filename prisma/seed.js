@@ -42,6 +42,25 @@ async function ensureDefaultAdmin() {
       },
     });
     console.log("SUCCESS: Default B2B customer ensured:", customer.email);
+
+    // Ensure all products have placeholder article images & washing instruction images
+    const updatedProducts = await prisma.product.updateMany({
+      where: {
+        OR: [
+          { imageUrl: null },
+          { imageUrl: "" },
+          { washingInstructionsImageUrl: null },
+          { washingInstructionsImageUrl: "" },
+        ],
+      },
+      data: {
+        imageUrl: "/uploads/placeholders/default-article.svg",
+        washingInstructionsImageUrl: "/uploads/placeholders/default-washing.svg",
+        washingInstructions: "40°C Standard Wash. Do Not Bleach. Tumble Dry Low. Iron Medium Heat.",
+        isContracted: true,
+      },
+    });
+    console.log("SUCCESS: Updated product image placeholders count:", updatedProducts.count);
   } catch (error) {
     console.error("SEED WARNING:", error.message);
   }
