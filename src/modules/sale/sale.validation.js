@@ -1,54 +1,35 @@
 
 const { z } = require("zod");
 
-const createSaleSchema =
-  z.object({
-  
-customerId:
-  z.string().optional().nullable(),
+const createSaleSchema = z.object({
+  customerId: z.string().optional().nullable(),
 
+  subtotal: z.number(),
 
-    subtotal:
-      z.number(),
+  discount: z.number().optional(),
 
-    discount:
-      z.number().optional(),
+  tax: z.number().optional(),
 
-    tax:
-      z.number().optional(),
+  grandTotal: z.number(),
 
-    grandTotal:
-      z.number(),
+  paymentMethod: z.string().min(1, "Payment method is required"),
 
-    paymentMethod:
-      z.enum([
-        "CASH",
-        "CARD",
-        "BANK_TRANSFER",
-        "JAZZCASH",
-        "EASYPAISA",
-      ]),
+  notes: z.string().optional().nullable(),
 
-    notes:
-      z.string().optional(),
+  items: z.array(
+    z.object({
+      productId: z.string(),
 
-    items: z.array(
-      z.object({
-        productId:
-          z.string(),
+      quantity: z.number().min(1),
 
-        quantity:
-          z.number(),
+      unitPrice: z.number(),
 
-        unitPrice:
-          z.number(),
-
-        totalPrice:
-          z.number(),
-      })
-    ),
-  });
+      totalPrice: z.number().optional(),
+    })
+  ),
+});
 
 module.exports = {
   createSaleSchema,
 };
+

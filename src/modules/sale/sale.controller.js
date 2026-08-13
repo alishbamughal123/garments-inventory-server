@@ -2,6 +2,7 @@
 const {
   successResponse,
   errorResponse,
+  handleControllerError,
 } = require("../../utils/responseHandler");
 
 const {
@@ -13,6 +14,7 @@ const {
   getSales,
   getSaleById,
   deleteSale,
+  updateSale,
 } = require("./sale.service");
 
 /*
@@ -21,33 +23,17 @@ const {
 |--------------------------------------------------------------------------
 */
 
-const createSaleHandler =
-  async (req, res) => {
-     console.log(req.user);
-    try {
-      const validatedData =
-        createSaleSchema.parse(
-          req.body
-        );
+const createSaleHandler = async (req, res) => {
+  try {
+    const validatedData = createSaleSchema.parse(req.body);
 
-      const result =
-        await createSale(
-          validatedData,
-           req.user.id
-        );
+    const result = await createSale(validatedData, req.user?.id);
 
-      return successResponse(
-        res,
-        result,
-        "Sale created successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(res, result, "Sale created successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -55,24 +41,15 @@ const createSaleHandler =
 |--------------------------------------------------------------------------
 */
 
-const getAllSales =
-  async (req, res) => {
-    try {
-      const result =
-        await getSales();
+const getAllSales = async (req, res) => {
+  try {
+    const result = await getSales();
 
-      return successResponse(
-        res,
-        result,
-        "Sales fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(res, result, "Sales fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -80,26 +57,15 @@ const getAllSales =
 |--------------------------------------------------------------------------
 */
 
-const getSingleSale =
-  async (req, res) => {
-    try {
-      const result =
-        await getSaleById(
-          req.params.id
-        );
+const getSingleSale = async (req, res) => {
+  try {
+    const result = await getSaleById(req.params.id);
 
-      return successResponse(
-        res,
-        result,
-        "Sale fetched successfully"
-      );
-    } catch (error) {
-      return errorResponse(
-        res,
-        error.message
-      );
-    }
-  };
+    return successResponse(res, result, "Sale fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -112,16 +78,22 @@ const removeSale = async (req, res) => {
     await deleteSale(req.params.id);
     return successResponse(res, null, "Sale deleted successfully");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE SALE
+|--------------------------------------------------------------------------
+*/
 
 const updateSaleHandler = async (req, res) => {
   try {
     const result = await updateSale(req.params.id, req.body);
     return successResponse(res, result, "Sale updated successfully");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -132,3 +104,4 @@ module.exports = {
   removeSale,
   updateSaleHandler,
 };
+
