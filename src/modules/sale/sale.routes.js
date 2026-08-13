@@ -47,7 +47,7 @@ router.get("/:id", authMiddleware, getSingleSale);
 router.delete(
   "/:id",
   authMiddleware,
-  roleMiddleware("ADMIN", "MANAGER"),
+  roleMiddleware("ADMIN", "MANAGER", "CASHIER", "STAFF"),
   removeSale
 );
 
@@ -60,7 +60,7 @@ router.delete(
 router.put(
   "/:id",
   authMiddleware,
-  roleMiddleware("ADMIN", "MANAGER"),
+  roleMiddleware("ADMIN", "MANAGER", "CASHIER", "STAFF"),
   updateSaleHandler
 );
 
