@@ -10,6 +10,8 @@ router.post("/register", portalController.registerCustomer);
 router.post("/google-auth", portalController.googleAuthCustomer);
 
 // B2B Customer authenticated routes
+router.get("/profile", authMiddleware, portalController.getCustomerProfile);
+router.get("/customers", authMiddleware, portalController.getPortalCustomers);
 router.get("/catalog", authMiddleware, portalController.getCatalog);
 router.post("/orders/place", authMiddleware, portalController.placeOrder);
 router.get("/orders/my", authMiddleware, portalController.getMyOrders);

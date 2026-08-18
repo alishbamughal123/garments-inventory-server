@@ -52,6 +52,35 @@ const googleAuthCustomer = async (req, res) => {
 
 /*
 |--------------------------------------------------------------------------
+| GET B2B CUSTOMER PROFILE
+|--------------------------------------------------------------------------
+*/
+const getCustomerProfile = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+    const profile = await portalService.getCustomerProfile(customerId);
+    return successResponse(res, profile, "Profile fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| GET PORTAL CUSTOMERS (For Staff Selector & Customer Directory)
+|--------------------------------------------------------------------------
+*/
+const getPortalCustomers = async (req, res) => {
+  try {
+    const profile = await portalService.getCustomerProfile(req.user.id);
+    return successResponse(res, profile, "Portal customers fetched successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
 | GET B2B CATALOG
 |--------------------------------------------------------------------------
 */
@@ -60,12 +89,12 @@ const getCatalog = async (req, res) => {
     const customerId = req.user?.id || req.query.customerId;
     const { search, categoryId } = req.query;
     if (!customerId) {
-      return errorResponse(res, "Customer identification missing.");
+      return errorResponse(res, "Customer identification missing.", 400);
     }
     const catalog = await portalService.getPortalCatalog(customerId, search, categoryId);
     return successResponse(res, catalog, "Catalog fetched successfully");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -80,7 +109,7 @@ const placeOrder = async (req, res) => {
     const result = await portalService.createPortalOrder(customerId, req.body);
     return successResponse(res, result, "Order placed successfully");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -95,7 +124,7 @@ const getMyOrders = async (req, res) => {
     const orders = await portalService.getCustomerOrders(customerId);
     return successResponse(res, orders, "Orders fetched successfully");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -110,7 +139,7 @@ const getAllB2BOrders = async (req, res) => {
     const orders = await portalService.getAllOrders(status, customerId);
     return successResponse(res, orders, "All B2B orders fetched");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -126,7 +155,7 @@ const fulfillB2BOrder = async (req, res) => {
     const result = await portalService.fulfillOrder(id, userId);
     return successResponse(res, result, "Order fulfilled and Stock Out completed successfully!");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -143,7 +172,7 @@ const updateB2BOrderStatus = async (req, res) => {
     const result = await portalService.updateOrderStatus(id, status, userId);
     return successResponse(res, result, "Order status updated");
   } catch (error) {
-    return errorResponse(res, error.message);
+    return handleControllerError(res, error);
   }
 };
 
@@ -151,6 +180,8 @@ module.exports = {
   loginCustomer,
   registerCustomer,
   googleAuthCustomer,
+  getCustomerProfile,
+  getPortalCustomers,
   getCatalog,
   placeOrder,
   getMyOrders,

@@ -50,9 +50,8 @@ const createCustomer = async (payload) => {
   // Generate unique customer code if not provided
   let customerCode = payload.customerCode;
   if (!customerCode) {
-    const count = await prisma.customer.count();
-    const year = new Date().getFullYear();
-    customerCode = `CUST-${year}-${String(count + 1).padStart(4, "0")}`;
+    const { generateUniqueCustomerCode } = require("../portal/portal.service");
+    customerCode = await generateUniqueCustomerCode(prisma);
   }
 
   const { contacts, password, ...customerData } = payload;
