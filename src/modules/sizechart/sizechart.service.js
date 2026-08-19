@@ -1,44 +1,23 @@
 const prisma = require("../../config/db");
-const { SIZE_CHART_10101 } = require("../../../prisma/migrate-sizechart-10101");
-const { SIZE_CHART_10102 } = require("../../../prisma/migrate-sizechart-10102");
-const { SIZE_CHART_10105_10106_10116, getSingleSizeMeasurements } = require("../../../prisma/migrate-sizechart");
-const { SIZE_CHART_10107_10108 } = require("../../../prisma/migrate-sizechart-10107");
-const { SIZE_CHART_10109 } = require("../../../prisma/migrate-sizechart-10109");
-const { SIZE_CHART_10122, SIZE_CHART_10123 } = require("../../../prisma/migrate-sizechart-10122-10123");
-const { SIZE_CHART_10124 } = require("../../../prisma/migrate-sizechart-10124");
 const {
+  SIZE_CHART_10101,
+  SIZE_CHART_10102,
+  SIZE_CHART_10105_10106_10116,
+  SIZE_CHART_10107_10108,
+  SIZE_CHART_10109,
+  SIZE_CHART_10122,
+  SIZE_CHART_10123,
+  SIZE_CHART_10124,
   SIZE_CHART_20110,
   SIZE_CHART_20111,
   SIZE_CHART_200120,
   SIZE_CHART_200123,
   SIZE_CHART_200126,
-  SIZE_CHART_200127
-} = require("../../../prisma/migrate-all-sizecharts");
-
-// Fallback in-memory map if database table is being created
-const STATIC_CHARTS = {
-  "10101": SIZE_CHART_10101,
-  "10102": SIZE_CHART_10102,
-  "10105": SIZE_CHART_10105_10106_10116,
-  "10106": SIZE_CHART_10105_10106_10116,
-  "10116": SIZE_CHART_10105_10106_10116,
-  "10107": SIZE_CHART_10107_10108,
-  "10108": SIZE_CHART_10107_10108,
-  "10109": SIZE_CHART_10109,
-  "10122": SIZE_CHART_10122,
-  "10123": SIZE_CHART_10123,
-  "10124": SIZE_CHART_10124,
-  "20110": SIZE_CHART_20110,
-  "20111": SIZE_CHART_20111,
-  "200120": SIZE_CHART_200120,
-  "200121": SIZE_CHART_200120,
-  "200122": SIZE_CHART_200120,
-  "200123": SIZE_CHART_200123,
-  "200124": SIZE_CHART_200123,
-  "200125": SIZE_CHART_200123,
-  "200126": SIZE_CHART_200126,
-  "200127": SIZE_CHART_200127,
-};
+  SIZE_CHART_200127,
+  STATIC_CHARTS,
+  getSingleSizeMeasurements,
+  normalizeSizeKey,
+} = require("./sizechart.constants");
 
 const getSizeCharts = async () => {
   try {
