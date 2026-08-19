@@ -362,15 +362,71 @@ const registerCustomer = async (data) => {
 
 /*
 |--------------------------------------------------------------------------
-| B2B CUSTOMER GOOGLE AUTHENTICATION
+| B2B CUSTOMER GOOGLE AUTHENTICATION (WITH GOOGLE CRYPTOGRAPHIC VERIFICATION)
 |--------------------------------------------------------------------------
 */
-const googleAuthCustomer = async (email, name, googleId) => {
-  if (!email) {
-    throw new Error("Google email is required.");
+const googleAuthCustomer = async ({ idToken, credential, accessToken, email, name, googleId }) => {
+  let verifiedEmail = email;
+  let verifiedName = name;
+  let verifiedGoogleId = googleId;
+
+  // 1. If Google ID Token / Credential is provided, verify directly with Google OAuth API
+  const tokenToVerify = idToken || credential;
+  if (tokenToVerify) {
+    try {
+      const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${tokenToVerify}`);
+      if (!googleRes.ok) {
+        throw new Error("Invalid Google authentication token.");
+      }
+      const tokenInfo = await googleRes.json();
+      
+      if (!tokenInfo.email) {
+        throw new Error("Google token does not contain a valid email.");
+      }
+
+      // Check that Google has officially verified this email
+      if (tokenInfo.email_verified === "false" || tokenInfo.email_verified === false) {
+        throw new Error("Google email is not verified by Google.");
+      }
+
+      verifiedEmail = tokenInfo.email;
+      verifiedName = tokenInfo.name || tokenInfo.given_name || name;
+      verifiedGoogleId = tokenInfo.sub || googleId;
+    } catch (verifyErr) {
+      console.error("Google token verification failed:", verifyErr.message);
+      // If token verification failed, reject untrusted login
+      throw new Error(`Google verification failed: ${verifyErr.message}`);
+    }
+  } else if (accessToken) {
+    // Verify using Google userinfo API
+    try {
+      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (!userRes.ok) {
+        throw new Error("Invalid Google access token.");
+      }
+      const userInfo = await userRes.json();
+      if (!userInfo.email) {
+        throw new Error("Could not retrieve verified email from Google.");
+      }
+      if (userInfo.email_verified === false) {
+        throw new Error("Google email is not verified by Google.");
+      }
+      verifiedEmail = userInfo.email;
+      verifiedName = userInfo.name || userInfo.given_name || name;
+      verifiedGoogleId = userInfo.sub || googleId;
+    } catch (userErr) {
+      console.error("Google access token verification failed:", userErr.message);
+      throw new Error(`Google verification failed: ${userErr.message}`);
+    }
   }
 
-  const cleanEmail = email.trim().toLowerCase();
+  if (!verifiedEmail) {
+    throw new Error("Verified Google email is required.");
+  }
+
+  const cleanEmail = verifiedEmail.trim().toLowerCase();
 
   let customer = await prisma.customer.findFirst({
     where: { email: { equals: cleanEmail, mode: "insensitive" } }
@@ -378,7 +434,7 @@ const googleAuthCustomer = async (email, name, googleId) => {
 
   if (!customer) {
     const customerCode = await generateUniqueCustomerCode(prisma);
-    const dummyPasswordHash = await bcrypt.hash(googleId || "google-auth-secret", 10);
+    const dummyPasswordHash = await bcrypt.hash(verifiedGoogleId || "google-auth-secret", 10);
 
     let phone = `+47${Math.floor(10000000 + Math.random() * 90000000)}`;
     let phoneExists = await prisma.customer.findUnique({ where: { phoneNumber: phone } });
@@ -387,8 +443,8 @@ const googleAuthCustomer = async (email, name, googleId) => {
       phoneExists = await prisma.customer.findUnique({ where: { phoneNumber: phone } });
     }
 
-    const displayName = (name || "Google B2B Client").trim();
-    const companyDisplayName = name ? `${name.trim()}'s Business` : "Nordic Business Client";
+    const displayName = (verifiedName || cleanEmail.split("@")[0]).trim();
+    const companyDisplayName = verifiedName ? `${verifiedName.trim()}'s Business` : "Nordic Business Client";
 
     customer = await prisma.customer.create({
       data: {
@@ -410,7 +466,7 @@ const googleAuthCustomer = async (email, name, googleId) => {
           entity: "Customer",
           entityId: customer.id,
           performedBy: customer.fullName,
-          details: `Created new B2B customer via Google SSO (${customer.customerCode})`
+          details: `Created new verified B2B customer via Google SSO (${customer.customerCode})`
         }
       });
     } catch (auditErr) {

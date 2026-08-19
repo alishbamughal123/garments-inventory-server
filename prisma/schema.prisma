@@ -87,6 +87,8 @@ model Product {
   washingInstructions String?
   isContracted      Boolean                @default(false)
   logoOptions       Json?
+  sizeChart         Json?
+  sizeChartMeasurements Json?
   description       String?
   isActive          Boolean                @default(true)
   categoryId        String
@@ -108,6 +110,21 @@ model Product {
   @@index([styleNumber])
   @@index([styleName])
   @@index([productName])
+}
+
+model SizeChart {
+  id               String   @id @default(uuid())
+  styleNumber      String   @unique
+  title            String?
+  applicableStyles Json?
+  sizes            Json
+  measurements     Json
+  unit             String   @default("cm")
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([styleNumber])
 }
 
 model Barcode {

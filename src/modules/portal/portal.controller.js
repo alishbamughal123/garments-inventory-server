@@ -42,8 +42,7 @@ const registerCustomer = async (req, res) => {
 */
 const googleAuthCustomer = async (req, res) => {
   try {
-    const { email, name, googleId } = req.body;
-    const result = await portalService.googleAuthCustomer(email, name, googleId);
+    const result = await portalService.googleAuthCustomer(req.body);
     return successResponse(res, result, "Google authentication successful!");
   } catch (error) {
     return handleControllerError(res, error);

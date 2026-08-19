@@ -76,6 +76,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/v1", routes);
+app.use("/api", routes);
 
 // Global Error Handler guaranteeing CORS headers on error responses
 app.use((err, req, res, next) => {

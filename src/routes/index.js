@@ -16,6 +16,7 @@ const supportRoutes = require("../modules/support/support.routes");
 const portalRoutes = require("../modules/portal/portal.routes");
 const punchoutRoutes = require("../modules/punchout/punchout.routes");
 const ehfRoutes = require("../modules/ehf/ehf.routes");
+const sizechartRoutes = require("../modules/sizechart/sizechart.routes");
 
 const router = express.Router();
 
@@ -36,5 +37,6 @@ router.use("/support", supportRoutes);
 router.use("/portal", portalRoutes);
 router.use("/punchout", punchoutRoutes);
 router.use("/ehf", ehfRoutes);
+router.use("/size-charts", sizechartRoutes);
 
 module.exports = router;
