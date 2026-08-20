@@ -1,5 +1,9 @@
 
 const prisma = require("../../config/db");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -148,23 +152,66 @@ const createSale = async (payload, userId) => {
 |--------------------------------------------------------------------------
 */
 
-const getSales = async () => {
+const getSales = async (query = {}) => {
   try {
-    const sales = await prisma.sale.findMany({
-      include: {
-        customer: true,
-        saleItems: {
-          include: {
-            product: true,
+    const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+    const search = (query.search || query.query || "").trim();
+
+    const where = {};
+    if (search) {
+      where.OR = [
+        { invoiceNumber: { contains: search, mode: "insensitive" } },
+        { customer: { fullName: { contains: search, mode: "insensitive" } } },
+        { customer: { companyName: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    if (isAll) {
+      const sales = await prisma.sale.findMany({
+        where,
+        include: {
+          customer: true,
+          saleItems: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
-    return sales;
+      return {
+        sales,
+        pagination: formatPaginationMeta(sales.length, 1, sales.length || 1),
+      };
+    }
+
+    const [total, sales] = await Promise.all([
+      prisma.sale.count({ where }),
+      prisma.sale.findMany({
+        where,
+        include: {
+          customer: true,
+          saleItems: {
+            include: {
+              product: true,
+            },
+          },
+        },
+        skip,
+        take,
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+    ]);
+
+    return {
+      sales,
+      pagination: formatPaginationMeta(total, page, limit),
+    };
   } catch (error) {
     console.log("GET SALES ERROR:", error);
     throw error;

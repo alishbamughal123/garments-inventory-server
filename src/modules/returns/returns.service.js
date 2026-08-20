@@ -1,4 +1,8 @@
 const prisma = require("../../config/db");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -167,28 +171,76 @@ const processReturn =
 |--------------------------------------------------------------------------
 */
 
-const getReturns = async () => {
-  const returns =
-    await prisma.return.findMany({
+const getReturns = async (query = {}) => {
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const search = (query.search || query.query || "").trim();
+
+  const where = {};
+  if (query.status) {
+    where.status = query.status;
+  }
+
+  if (search) {
+    where.OR = [
+      { returnReason: { contains: search, mode: "insensitive" } },
+      { product: { productName: { contains: search, mode: "insensitive" } } },
+      { product: { sku: { contains: search, mode: "insensitive" } } },
+      { product: { styleNumber: { contains: search, mode: "insensitive" } } },
+    ];
+  }
+
+  if (isAll) {
+    const returns = await prisma.return.findMany({
+      where,
       include: {
         product: true,
-
         processedBy: {
-  select: {
-    id: true,
-    name: true,
-    email: true,
-    role: true,
-  },
-}
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
-
       orderBy: {
         createdAt: "desc",
       },
     });
 
-  return returns;
+    return {
+      returns,
+      pagination: formatPaginationMeta(returns.length, 1, returns.length || 1),
+    };
+  }
+
+  const [total, returns] = await Promise.all([
+    prisma.return.count({ where }),
+    prisma.return.findMany({
+      where,
+      include: {
+        product: true,
+        processedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      skip,
+      take,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  ]);
+
+  return {
+    returns,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 /*

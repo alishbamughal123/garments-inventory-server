@@ -57,7 +57,7 @@ const getProductMovementReportHandler = async (req, res) => {
 
 const getLowStockReportHandler = async (req, res) => {
   try {
-    const report = await reportsService.getLowStockReport();
+    const report = await reportsService.getLowStockReport(req.query);
     return successResponse(res, report, "Low Stock report generated successfully");
   } catch (error) {
     return handleControllerError(res, error);
@@ -75,7 +75,7 @@ const getCustomerPurchaseReportHandler = async (req, res) => {
 
 const getOpenOrdersReportHandler = async (req, res) => {
   try {
-    const report = await reportsService.getOpenOrdersReport();
+    const report = await reportsService.getOpenOrdersReport(req.query);
     return successResponse(res, report, "Open Orders report generated successfully");
   } catch (error) {
     return handleControllerError(res, error);

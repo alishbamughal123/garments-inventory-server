@@ -3,6 +3,7 @@ const express = require("express");
 const {
   create,
   getAll,
+  getBaseStylesHandler,
   getBarcodeImage,
   getLowStock,
   search,
@@ -47,6 +48,12 @@ router.get(
   "/",
   authMiddleware,
   getAll
+);
+
+router.get(
+  "/base-styles",
+  authMiddleware,
+  getBaseStylesHandler
 );
 
 /*

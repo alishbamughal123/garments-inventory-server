@@ -1,9 +1,20 @@
-const successResponse = (res, data, message = "Success") => {
-  return res.status(200).json({
+const successResponse = (
+  res,
+  data,
+  message = "Success",
+  pagination = null
+) => {
+  const responsePayload = {
     success: true,
     message,
     data,
-  });
+  };
+
+  if (pagination) {
+    responsePayload.pagination = pagination;
+  }
+
+  return res.status(200).json(responsePayload);
 };
 
 const errorResponse = (

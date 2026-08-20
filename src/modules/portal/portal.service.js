@@ -1,6 +1,10 @@
 const prisma = require("../../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 const getJwtSecret = () => process.env.JWT_SECRET || "super_secret_jwt_key";
 
@@ -861,19 +865,50 @@ const getCustomerOrders = async (userIdOrCustomerId) => {
   }
 
   if (!customer) {
-    return [];
+    return { orders: [], pagination: formatPaginationMeta(0, 1, 25) };
   }
 
-  return await prisma.customerOrder.findMany({
-    where: { customerId: customer.id },
-    include: {
-      orderItems: {
-        include: { product: true }
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const where = { customerId: customer.id };
+
+  if (isAll) {
+    const orders = await prisma.customerOrder.findMany({
+      where,
+      include: {
+        orderItems: {
+          include: { product: true }
+        },
+        deliveryNote: true
       },
-      deliveryNote: true
-    },
-    orderBy: { createdAt: "desc" }
-  });
+      orderBy: { createdAt: "desc" }
+    });
+
+    return {
+      orders,
+      pagination: formatPaginationMeta(orders.length, 1, orders.length || 1)
+    };
+  }
+
+  const [total, orders] = await Promise.all([
+    prisma.customerOrder.count({ where }),
+    prisma.customerOrder.findMany({
+      where,
+      include: {
+        orderItems: {
+          include: { product: true }
+        },
+        deliveryNote: true
+      },
+      skip,
+      take,
+      orderBy: { createdAt: "desc" }
+    })
+  ]);
+
+  return {
+    orders,
+    pagination: formatPaginationMeta(total, page, limit)
+  };
 };
 
 /*
@@ -881,24 +916,74 @@ const getCustomerOrders = async (userIdOrCustomerId) => {
 | ADMIN: GET ALL B2B ORDERS
 |--------------------------------------------------------------------------
 */
-const getAllOrders = async (status = null, customerId = null) => {
-  return await prisma.customerOrder.findMany({
-    where: {
-      ...(status ? { status } : {}),
-      ...(customerId ? { customerId } : {})
-    },
-    include: {
-      customer: true,
-      orderItems: {
-        include: { product: true }
+const getAllOrders = async (statusOrQuery = null, customerId = null) => {
+  const query =
+    typeof statusOrQuery === "object" && statusOrQuery !== null
+      ? statusOrQuery
+      : { status: statusOrQuery, customerId };
+
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const search = (query.search || query.query || "").trim();
+
+  const where = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.customerId ? { customerId: query.customerId } : {}),
+  };
+
+  if (search) {
+    where.OR = [
+      { orderNumber: { contains: search, mode: "insensitive" } },
+      { customer: { fullName: { contains: search, mode: "insensitive" } } },
+      { customer: { companyName: { contains: search, mode: "insensitive" } } },
+    ];
+  }
+
+  if (isAll) {
+    const orders = await prisma.customerOrder.findMany({
+      where,
+      include: {
+        customer: true,
+        orderItems: {
+          include: { product: true },
+        },
+        deliveryNote: true,
+        fulfilledBy: {
+          select: { id: true, name: true, email: true },
+        },
       },
-      deliveryNote: true,
-      fulfilledBy: {
-        select: { id: true, name: true, email: true }
-      }
-    },
-    orderBy: { createdAt: "desc" }
-  });
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      orders,
+      pagination: formatPaginationMeta(orders.length, 1, orders.length || 1),
+    };
+  }
+
+  const [total, orders] = await Promise.all([
+    prisma.customerOrder.count({ where }),
+    prisma.customerOrder.findMany({
+      where,
+      include: {
+        customer: true,
+        orderItems: {
+          include: { product: true },
+        },
+        deliveryNote: true,
+        fulfilledBy: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return {
+    orders,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 /*

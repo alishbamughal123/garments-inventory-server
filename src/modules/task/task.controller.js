@@ -64,7 +64,8 @@ const getTasksHandler =
       return successResponse(
         res,
         result,
-        "Tasks fetched successfully"
+        "Tasks fetched successfully",
+        result.pagination
       );
     } catch (error) {
       return handleControllerError(

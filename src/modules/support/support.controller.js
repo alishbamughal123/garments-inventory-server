@@ -26,7 +26,12 @@ const getTicketsHandler = async (req, res) => {
   try {
     const filters = req.query;
     const result = await getTickets(filters);
-    return successResponse(res, result, "Support tickets fetched successfully");
+    return successResponse(
+      res,
+      result.tickets || result,
+      "Support tickets fetched successfully",
+      result.pagination
+    );
   } catch (error) {
     return handleControllerError(res, error);
   }

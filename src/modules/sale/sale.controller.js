@@ -43,9 +43,14 @@ const createSaleHandler = async (req, res) => {
 
 const getAllSales = async (req, res) => {
   try {
-    const result = await getSales();
+    const result = await getSales(req.query);
 
-    return successResponse(res, result, "Sales fetched successfully");
+    return successResponse(
+      res,
+      result.sales || result,
+      "Sales fetched successfully",
+      result.pagination
+    );
   } catch (error) {
     return handleControllerError(res, error);
   }

@@ -184,6 +184,9 @@ const getTasksQuerySchema = z.object({
     .enum(["true", "false"])
     .optional()
     .transform((value) => value !== "false"),
+  page: z.union([z.string(), z.number()]).optional(),
+  limit: z.union([z.string(), z.number()]).optional(),
+  all: z.union([z.string(), z.boolean()]).optional(),
 });
 
 module.exports = {

@@ -1,6 +1,7 @@
 const {
   createProduct,
   getProducts,
+  getBaseStyles,
   getLowStockProducts,
   searchProducts,
   getProductById,
@@ -46,9 +47,23 @@ const create = async (req, res) => {
 
 const getAll = async (req, res) => {
   try {
-    const result = await getProducts();
+    const result = await getProducts(req.query);
 
-    return successResponse(res, result, "Products fetched successfully");
+    return successResponse(
+      res,
+      result.products || result,
+      "Products fetched successfully",
+      result.pagination
+    );
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+const getBaseStylesHandler = async (req, res) => {
+  try {
+    const styles = await getBaseStyles();
+    return successResponse(res, styles, "Base styles fetched successfully");
   } catch (error) {
     return errorResponse(res, error.message);
   }
@@ -76,12 +91,13 @@ const getBarcodeImage = async (req, res) => {
 
 const getLowStock = async (req, res) => {
   try {
-    const result = await getLowStockProducts();
+    const result = await getLowStockProducts(req.query);
 
     return successResponse(
       res,
-      result,
-      "Low stock products fetched successfully"
+      result.products || result,
+      "Low stock products fetched successfully",
+      result.pagination
     );
   } catch (error) {
     return errorResponse(res, error.message);
@@ -90,11 +106,16 @@ const getLowStock = async (req, res) => {
 
 const search = async (req, res) => {
   try {
-    const query = req.query.query || req.query.q || "";
+    const query = req.query.query || req.query.q || req.query.search || "";
 
-    const result = await searchProducts(query);
+    const result = await searchProducts(query, req.query);
 
-    return successResponse(res, result, "Products fetched successfully");
+    return successResponse(
+      res,
+      result.products || result,
+      "Products fetched successfully",
+      result.pagination
+    );
   } catch (error) {
     return errorResponse(res, error.message);
   }
@@ -177,6 +198,7 @@ const uploadProductImages = async (req, res) => {
 module.exports = {
   create,
   getAll,
+  getBaseStylesHandler,
   getBarcodeImage,
   getLowStock,
   search,

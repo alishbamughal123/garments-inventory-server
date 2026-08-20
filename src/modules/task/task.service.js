@@ -6,6 +6,10 @@ const {
   createScheduledFor,
   resolveReminderTarget,
 } = require("./task-reminder.service");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 const terminalStatuses = [
   "COMPLETED",
@@ -755,18 +759,38 @@ const createTask = async (
   );
 };
 
-const getTasks = async (
-  filters = {}
-) => {
-  const where =
-      buildTaskWhereClause(
-        filters
-      );
+const getTasks = async (filters = {}) => {
+  const where = buildTaskWhereClause(filters);
+  const isCalendarView = Boolean(filters.view);
+  const { page, limit, skip, take, isAll } = getPaginationParams(filters, 25, 200);
 
-    const tasks =
-      await prisma.task.findMany({
+  const shouldFetchAll = isCalendarView || isAll;
+
+  let tasks;
+  let total;
+
+  if (shouldFetchAll) {
+    tasks = await prisma.task.findMany({
+      where,
+      include: taskListInclude,
+      orderBy: [
+        {
+          dueDate: "asc",
+        },
+        {
+          createdAt: "desc",
+        },
+      ],
+    });
+    total = tasks.length;
+  } else {
+    [total, tasks] = await Promise.all([
+      prisma.task.count({ where }),
+      prisma.task.findMany({
         where,
         include: taskListInclude,
+        skip,
+        take,
         orderBy: [
           {
             dueDate: "asc",
@@ -775,32 +799,29 @@ const getTasks = async (
             createdAt: "desc",
           },
         ],
-      });
+      }),
+    ]);
+  }
 
-    const normalizedTasks =
-      tasks.map(
-        mapTaskForResponse
-      );
+  const normalizedTasks = tasks.map(mapTaskForResponse);
 
-    const summary =
-      filters.includeSummary ===
-      false
-        ? null
-        : await buildTaskSummary();
+  const summary =
+    filters.includeSummary === false ? null : await buildTaskSummary();
 
-    return {
-      items: normalizedTasks,
-      summary,
-      filters: {
-        ...filters,
-        calendarRange:
-          getCalendarRange(
-            filters.view,
-            filters.date
-          ),
-      },
-    };
+  const pagination = shouldFetchAll
+    ? formatPaginationMeta(total, 1, total || 1)
+    : formatPaginationMeta(total, page, limit);
+
+  return {
+    items: normalizedTasks,
+    summary,
+    pagination,
+    filters: {
+      ...filters,
+      calendarRange: getCalendarRange(filters.view, filters.date),
+    },
   };
+};
 
 const getTaskById = async (
   id

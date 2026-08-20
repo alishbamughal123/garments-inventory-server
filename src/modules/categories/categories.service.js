@@ -1,4 +1,8 @@
 const prisma = require("../../config/db");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -31,28 +35,63 @@ const createCategory = async (payload) => {
 |--------------------------------------------------------------------------
 */
 
-const getCategories = async (search = "") => {
-  return prisma.category.findMany({
-    where: {
-      OR: [
-        {
-          name: {
-            contains: search,
-            mode: "insensitive",
-          },
+const getCategories = async (searchOrQuery = "") => {
+  const query =
+    typeof searchOrQuery === "object" && searchOrQuery !== null
+      ? searchOrQuery
+      : { search: searchOrQuery };
+
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const search = (query.search || "").trim();
+
+  const where = {};
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
         },
-        {
-          description: {
-            contains: search,
-            mode: "insensitive",
-          },
+      },
+      {
+        description: {
+          contains: search,
+          mode: "insensitive",
         },
-      ],
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+      },
+    ];
+  }
+
+  if (isAll) {
+    const categories = await prisma.category.findMany({
+      where,
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return {
+      categories,
+      pagination: formatPaginationMeta(categories.length, 1, categories.length || 1),
+    };
+  }
+
+  const [total, categories] = await Promise.all([
+    prisma.category.count({ where }),
+    prisma.category.findMany({
+      where,
+      skip,
+      take,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  ]);
+
+  return {
+    categories,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 /*

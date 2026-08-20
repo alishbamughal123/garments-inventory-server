@@ -63,14 +63,14 @@ const createLeadHandler =
 const getLeadsHandler =
   async (req, res) => {
     try {
-      const { search } = req.query;
       const result =
-        await getLeads(search);
+        await getLeads(req.query);
 
       return successResponse(
         res,
-        result,
-        "Leads fetched successfully"
+        result.leads || result,
+        "Leads fetched successfully",
+        result.pagination
       );
     } catch (error) {
       return handleControllerError(

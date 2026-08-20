@@ -69,12 +69,13 @@ const getMe = async (req, res) => {
 
 const getUsersHandler = async (req, res) => {
   try {
-    const result = await getUsers();
+    const result = await getUsers(req.query);
 
     return successResponse(
       res,
-      result,
-      "Users fetched successfully"
+      result.users || result,
+      "Users fetched successfully",
+      result.pagination
     );
   } catch (error) {
     return errorResponse(res, error.message);

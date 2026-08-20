@@ -1,4 +1,8 @@
 const prisma = require("../../config/db");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -191,24 +195,72 @@ const stockOut = async (payload, userId) => {
 | GET TRANSACTIONS (Filtered by Type/Customer)
 |--------------------------------------------------------------------------
 */
-const getTransactions = async (transactionType = null, customerId = null) => {
-  const transactions = await prisma.inventoryTransaction.findMany({
-    where: {
-      ...(transactionType ? { transactionType } : {}),
-      ...(customerId ? { customerId } : {})
-    },
-    include: {
-      product: { include: { category: true } },
-      customer: true,
-      performedBy: {
-        select: { id: true, name: true, email: true, role: true }
-      },
-      deliveryNote: true
-    },
-    orderBy: { createdAt: "desc" }
-  });
+const getTransactions = async (typeOrQuery = null, customerId = null) => {
+  const query =
+    typeof typeOrQuery === "object" && typeOrQuery !== null
+      ? typeOrQuery
+      : { transactionType: typeOrQuery, customerId };
 
-  return transactions;
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const search = (query.search || query.query || "").trim();
+
+  const where = {
+    ...(query.transactionType ? { transactionType: query.transactionType } : {}),
+    ...(query.customerId ? { customerId: query.customerId } : {}),
+  };
+
+  if (search) {
+    where.OR = [
+      { product: { productName: { contains: search, mode: "insensitive" } } },
+      { product: { sku: { contains: search, mode: "insensitive" } } },
+      { product: { styleNumber: { contains: search, mode: "insensitive" } } },
+      { customer: { fullName: { contains: search, mode: "insensitive" } } },
+      { customer: { companyName: { contains: search, mode: "insensitive" } } },
+    ];
+  }
+
+  if (isAll) {
+    const transactions = await prisma.inventoryTransaction.findMany({
+      where,
+      include: {
+        product: { include: { category: true } },
+        customer: true,
+        performedBy: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+        deliveryNote: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      transactions,
+      pagination: formatPaginationMeta(transactions.length, 1, transactions.length || 1),
+    };
+  }
+
+  const [total, transactions] = await Promise.all([
+    prisma.inventoryTransaction.count({ where }),
+    prisma.inventoryTransaction.findMany({
+      where,
+      include: {
+        product: { include: { category: true } },
+        customer: true,
+        performedBy: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+        deliveryNote: true,
+      },
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return {
+    transactions,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 /*

@@ -4,6 +4,10 @@ const generateBarcode = require("../../utils/generateBarcode");
 const {
   normalizeProductPayload,
 } = require("./productVariant.helper");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -246,106 +250,161 @@ const createProduct = async (
   return finalProduct;
 };
 
+const buildProductWhere = (query = {}) => {
+  const where = {};
+  const search = (query.search || query.query || query.q || "").trim();
+
+  const conditions = [];
+
+  if (search) {
+    conditions.push({
+      OR: [
+        { styleNumber: { contains: search, mode: "insensitive" } },
+        { baseStyleNumber: { contains: search, mode: "insensitive" } },
+        { styleName: { contains: search, mode: "insensitive" } },
+        { itemName: { contains: search, mode: "insensitive" } },
+        { productName: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+        { brand: { contains: search, mode: "insensitive" } },
+        { color: { contains: search, mode: "insensitive" } },
+        {
+          barcodes: {
+            some: {
+              barcodeValue: { contains: search, mode: "insensitive" },
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  if (query.styleFilter && query.styleFilter !== "ALL") {
+    conditions.push({
+      OR: [
+        { baseStyleNumber: query.styleFilter },
+        { styleNumber: { startsWith: query.styleFilter } },
+      ],
+    });
+  }
+
+  if (query.categoryId) {
+    conditions.push({ categoryId: query.categoryId });
+  }
+
+  if (conditions.length > 0) {
+    where.AND = conditions;
+  }
+
+  return where;
+};
+
 /*
 |--------------------------------------------------------------------------
-| GET ALL PRODUCTS
+| GET ALL PRODUCTS (Paginated)
 |--------------------------------------------------------------------------
 */
 
-const getProducts = async () => {
-  const products = await prisma.product.findMany({
-    include: {
-      category: true,
+const getProducts = async (query = {}) => {
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const where = buildProductWhere(query);
 
-      barcodes: true,
-    },
-
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  return products;
-};
-const getLowStockProducts =
-  async () => {
-    const products =
-      await prisma.product.findMany({
-        include: {
-          category: true,
-          barcodes: true,
-        },
-      });
-
-    return products.filter(
-      (item) =>
-        item.stockQuantity <=
-        item.minStockAlert
-    );
-  };
-  
-const searchProducts =
-  async (query) => {
-    return await prisma.product.findMany({
-      where: {
-        OR: [
-          {
-            styleNumber: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            baseStyleNumber: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            styleName: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            itemName: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            productName: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-
-          {
-            sku: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-
-          {
-            barcodes: {
-              some: {
-                barcodeValue: {
-                  contains: query,
-                  mode: "insensitive",
-                },
-              },
-            },
-          },
-        ],
-      },
-
+  if (isAll) {
+    const products = await prisma.product.findMany({
+      where,
       include: {
         category: true,
         barcodes: true,
       },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
+
+    return {
+      products,
+      pagination: formatPaginationMeta(products.length, 1, products.length || 1),
+    };
+  }
+
+  const [total, products] = await Promise.all([
+    prisma.product.count({ where }),
+    prisma.product.findMany({
+      where,
+      include: {
+        category: true,
+        barcodes: true,
+      },
+      skip,
+      take,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  ]);
+
+  return {
+    products,
+    pagination: formatPaginationMeta(total, page, limit),
   };
+};
+
+const getBaseStyles = async () => {
+  const products = await prisma.product.findMany({
+    select: {
+      baseStyleNumber: true,
+      styleNumber: true,
+    },
+  });
+
+  const styles = Array.from(
+    new Set(
+      products
+        .map((p) => p.baseStyleNumber || (p.styleNumber ? p.styleNumber.split("-")[0] : null))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  return styles;
+};
+
+const getLowStockProducts = async (query = {}) => {
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+
+  const products = await prisma.product.findMany({
+    include: {
+      category: true,
+      barcodes: true,
+    },
+    orderBy: {
+      stockQuantity: "asc",
+    },
+  });
+
+  const lowStock = products.filter(
+    (item) => item.stockQuantity <= item.minStockAlert
+  );
+
+  if (isAll) {
+    return {
+      products: lowStock,
+      pagination: formatPaginationMeta(lowStock.length, 1, lowStock.length || 1),
+    };
+  }
+
+  const paginatedItems = lowStock.slice(skip, skip + take);
+
+  return {
+    products: paginatedItems,
+    pagination: formatPaginationMeta(lowStock.length, page, limit),
+  };
+};
+
+const searchProducts = async (query, options = {}) => {
+  return await getProducts({
+    ...options,
+    search: query,
+  });
+};
   /*
 |--------------------------------------------------------------------------
 | GET PRODUCT BY ID
@@ -628,6 +687,7 @@ const getPriceHistory = async (productId) => {
 module.exports = {
   createProduct,
   getProducts,
+  getBaseStyles,
   getLowStockProducts,
   searchProducts,
   getProductById,

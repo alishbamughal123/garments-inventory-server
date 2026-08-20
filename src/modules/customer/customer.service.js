@@ -1,6 +1,10 @@
 const prisma = require("../../config/db");
 const bcrypt = require("bcryptjs");
 const { logActivity } = require("../activity/activity.service");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 const buildCustomerFilters = (search, customerType, status) => {
   const filters = [];
@@ -102,16 +106,51 @@ const createCustomer = async (payload) => {
 | GET CUSTOMERS
 |--------------------------------------------------------------------------
 */
-const getCustomers = async (search = "", customerType, status) => {
-  return await prisma.customer.findMany({
-    where: buildCustomerFilters(search, customerType, status),
-    include: {
-      contacts: true,
-      customPrices: true,
-      productAccess: true
-    },
-    orderBy: { createdAt: "desc" }
-  });
+const getCustomers = async (searchOrQuery = "", customerType, status) => {
+  const query =
+    typeof searchOrQuery === "object" && searchOrQuery !== null
+      ? searchOrQuery
+      : { search: searchOrQuery, customerType, status };
+
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const where = buildCustomerFilters(query.search, query.customerType, query.status);
+
+  if (isAll) {
+    const customers = await prisma.customer.findMany({
+      where,
+      include: {
+        contacts: true,
+        customPrices: true,
+        productAccess: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      customers,
+      pagination: formatPaginationMeta(customers.length, 1, customers.length || 1),
+    };
+  }
+
+  const [total, customers] = await Promise.all([
+    prisma.customer.count({ where }),
+    prisma.customer.findMany({
+      where,
+      include: {
+        contacts: true,
+        customPrices: true,
+        productAccess: true,
+      },
+      skip,
+      take,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return {
+    customers,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 /*

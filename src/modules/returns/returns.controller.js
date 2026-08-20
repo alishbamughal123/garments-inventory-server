@@ -58,12 +58,13 @@ const getAllReturns =
   async (req, res) => {
     try {
       const result =
-        await getReturns();
+        await getReturns(req.query);
 
       return successResponse(
         res,
-        result,
-        "Returns fetched successfully"
+        result.returns || result,
+        "Returns fetched successfully",
+        result.pagination
       );
     } catch (error) {
       return errorResponse(

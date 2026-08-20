@@ -1,4 +1,8 @@
 const prisma = require("../../config/db");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 const generateTicketNumber = async () => {
   const count = await prisma.supportTicket.count();
@@ -29,6 +33,7 @@ const createTicket = async (data, createdById) => {
 
 const getTickets = async (filters = {}) => {
   const { status, priority, customerId, assignedToId, search } = filters;
+  const { page, limit, skip, take, isAll } = getPaginationParams(filters, 25, 200);
   
   const where = {};
   if (status) where.status = status;
@@ -43,21 +48,54 @@ const getTickets = async (filters = {}) => {
     ];
   }
 
-  return prisma.supportTicket.findMany({
-    where,
-    include: {
-      customer: true,
-      createdBy: {
-        select: { id: true, name: true, email: true },
+  if (isAll) {
+    const tickets = await prisma.supportTicket.findMany({
+      where,
+      include: {
+        customer: true,
+        createdBy: {
+          select: { id: true, name: true, email: true },
+        },
+        assignedTo: {
+          select: { id: true, name: true, email: true },
+        },
       },
-      assignedTo: {
-        select: { id: true, name: true, email: true },
+      orderBy: {
+        createdAt: "desc",
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+    });
+
+    return {
+      tickets,
+      pagination: formatPaginationMeta(tickets.length, 1, tickets.length || 1),
+    };
+  }
+
+  const [total, tickets] = await Promise.all([
+    prisma.supportTicket.count({ where }),
+    prisma.supportTicket.findMany({
+      where,
+      include: {
+        customer: true,
+        createdBy: {
+          select: { id: true, name: true, email: true },
+        },
+        assignedTo: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      skip,
+      take,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  ]);
+
+  return {
+    tickets,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 const getTicketById = async (id) => {

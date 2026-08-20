@@ -44,13 +44,13 @@ const create = async (req, res) => {
 
 const getAll = async (req, res) => {
   try {
-    const { search } = req.query;
-    const result = await getCategories(search);
+    const result = await getCategories(req.query);
 
     return successResponse(
       res,
-      result,
-      "Categories fetched successfully"
+      result.categories || result,
+      "Categories fetched successfully",
+      result.pagination
     );
   } catch (error) {
     return errorResponse(res, error.message);

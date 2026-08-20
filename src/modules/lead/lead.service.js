@@ -3,6 +3,10 @@ const prisma =
 const {
   logActivity,
 } = require("../activity/activity.service");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 const createLead =
   async (
@@ -17,46 +21,78 @@ const createLead =
     });
   };
 
-const getLeads =
-  async (search = "") => {
-    return await prisma.lead.findMany({
-      where: {
-        OR: [
-          {
-            fullName: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-          {
-            companyName: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-          {
-            phoneNumber: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-          {
-            email: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-        ],
-      },
+const getLeads = async (searchOrQuery = "") => {
+  const query =
+    typeof searchOrQuery === "object" && searchOrQuery !== null
+      ? searchOrQuery
+      : { search: searchOrQuery };
+
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const search = (query.search || "").trim();
+
+  const where = {};
+  const conditions = [];
+
+  if (search) {
+    conditions.push({
+      OR: [
+        { fullName: { contains: search, mode: "insensitive" } },
+        { companyName: { contains: search, mode: "insensitive" } },
+        { phoneNumber: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (query.status) {
+    conditions.push({ status: query.status });
+  }
+
+  if (query.source) {
+    conditions.push({ source: query.source });
+  }
+
+  if (conditions.length > 0) {
+    where.AND = conditions;
+  }
+
+  if (isAll) {
+    const leads = await prisma.lead.findMany({
+      where,
       include: {
         assignedTo: true,
       },
-
       orderBy: {
         createdAt: "desc",
       },
     });
+
+    return {
+      leads,
+      pagination: formatPaginationMeta(leads.length, 1, leads.length || 1),
+    };
+  }
+
+  const [total, leads] = await Promise.all([
+    prisma.lead.count({ where }),
+    prisma.lead.findMany({
+      where,
+      include: {
+        assignedTo: true,
+      },
+      skip,
+      take,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+  ]);
+
+  return {
+    leads,
+    pagination: formatPaginationMeta(total, page, limit),
   };
+};
 
 const getLeadById =
   async (id) => {

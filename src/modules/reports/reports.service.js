@@ -1,5 +1,9 @@
 const { Prisma } = require("@prisma/client");
 const prisma = require("../../config/db");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 const LEAD_STATUS_ORDER = [
   "NEW", "CONTACTED", "QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "WON", "LOST"
@@ -121,6 +125,22 @@ const getCrmOverview = async (query = {}) => {
 |--------------------------------------------------------------------------
 */
 
+// Helper to paginate an array of report items
+const paginateReportItems = (items, query, defaultLimit = 25) => {
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, defaultLimit, 500);
+  if (isAll) {
+    return {
+      items,
+      pagination: formatPaginationMeta(items.length, 1, items.length || 1),
+    };
+  }
+  const paginated = items.slice(skip, skip + take);
+  return {
+    items: paginated,
+    pagination: formatPaginationMeta(items.length, page, limit),
+  };
+};
+
 // 1. Inventory Report
 const getInventoryReport = async (query = {}) => {
   const { categoryId, search } = query;
@@ -175,6 +195,8 @@ const getInventoryReport = async (query = {}) => {
     };
   });
 
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
   return {
     summary: {
       totalProducts: products.length,
@@ -182,7 +204,8 @@ const getInventoryReport = async (query = {}) => {
       totalInventoryCostValue: roundToTwo(totalInventoryValue),
       lowStockAlerts: lowStockCount
     },
-    items
+    items: paginatedItems,
+    pagination
   };
 };
 
@@ -202,24 +225,28 @@ const getStockInReport = async (query = {}) => {
   });
 
   const totalQuantity = transactions.reduce((acc, t) => acc + t.quantity, 0);
+  const allItems = transactions.map(t => ({
+    id: t.id,
+    date: t.createdAt,
+    sku: t.product.sku,
+    productName: t.product.productName,
+    category: t.product.category.name,
+    quantity: t.quantity,
+    previousStock: t.previousStock,
+    newStock: t.newStock,
+    notes: t.notes,
+    performedBy: t.performedBy?.name || "System"
+  }));
+
+  const { items: paginatedItems, pagination } = paginateReportItems(allItems, query);
 
   return {
     summary: {
       totalTransactions: transactions.length,
       totalQuantityIn: totalQuantity
     },
-    items: transactions.map(t => ({
-      id: t.id,
-      date: t.createdAt,
-      sku: t.product.sku,
-      productName: t.product.productName,
-      category: t.product.category.name,
-      quantity: t.quantity,
-      previousStock: t.previousStock,
-      newStock: t.newStock,
-      notes: t.notes,
-      performedBy: t.performedBy?.name || "System"
-    }))
+    items: paginatedItems,
+    pagination
   };
 };
 
@@ -266,13 +293,16 @@ const getStockOutReport = async (query = {}) => {
     };
   });
 
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
   return {
     summary: {
       totalTransactions: transactions.length,
       totalQuantityOut: totalQtyOut,
       totalParcelWeightKg: roundToTwo(totalParcelWeightKg)
     },
-    items
+    items: paginatedItems,
+    pagination
   };
 };
 
@@ -319,13 +349,16 @@ const getCustomerOrdersReport = async (query = {}) => {
     };
   });
 
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
   return {
     summary: {
       totalOrders: orders.length,
       totalRevenue: roundToTwo(grandTotalSum),
       totalParcelWeightKg: roundToTwo(totalWeightSum)
     },
-    items
+    items: paginatedItems,
+    pagination
   };
 };
 
@@ -364,16 +397,19 @@ const getProductMovementReport = async (query = {}) => {
     };
   });
 
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
   return {
     summary: {
       totalProductsTracked: products.length
     },
-    items
+    items: paginatedItems,
+    pagination
   };
 };
 
 // 6. Low Stock Report
-const getLowStockReport = async () => {
+const getLowStockReport = async (query = {}) => {
   const products = await prisma.product.findMany({
     where: { isActive: true },
     include: { category: true }
@@ -392,11 +428,14 @@ const getLowStockReport = async () => {
       reorderNeeded: Math.max(0, p.minStockAlert * 2 - p.stockQuantity)
     }));
 
+  const { items: paginatedItems, pagination } = paginateReportItems(lowStockItems, query);
+
   return {
     summary: {
       totalLowStockProducts: lowStockItems.length
     },
-    items: lowStockItems
+    items: paginatedItems,
+    pagination
   };
 };
 
@@ -432,16 +471,19 @@ const getCustomerPurchaseReport = async (query = {}) => {
     };
   }).sort((a, b) => b.totalOrderSpend - a.totalOrderSpend);
 
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
   return {
     summary: {
       totalCustomersAnalyzed: customers.length
     },
-    items
+    items: paginatedItems,
+    pagination
   };
 };
 
 // 8. Open Orders Report
-const getOpenOrdersReport = async () => {
+const getOpenOrdersReport = async (query = {}) => {
   const openOrders = await prisma.customerOrder.findMany({
     where: {
       status: { in: ["PENDING", "APPROVED", "PROCESSING"] }
@@ -466,12 +508,15 @@ const getOpenOrdersReport = async () => {
     totalParcelWeight: o.totalParcelWeight
   }));
 
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
   return {
     summary: {
       openOrdersCount: openOrders.length,
       openOrdersTotalValue: roundToTwo(items.reduce((acc, i) => acc + i.totalAmount, 0))
     },
-    items
+    items: paginatedItems,
+    pagination
   };
 };
 

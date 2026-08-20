@@ -43,9 +43,13 @@ const removeStock = async (req, res) => {
 */
 const getAllTransactions = async (req, res) => {
   try {
-    const { transactionType, customerId } = req.query;
-    const result = await getTransactions(transactionType, customerId);
-    return successResponse(res, result, "Transactions fetched successfully");
+    const result = await getTransactions(req.query);
+    return successResponse(
+      res,
+      result.transactions || result,
+      "Transactions fetched successfully",
+      result.pagination
+    );
   } catch (error) {
     return errorResponse(res, error.message);
   }

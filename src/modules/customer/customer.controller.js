@@ -39,9 +39,13 @@ const createCustomerHandler = async (req, res) => {
 */
 const getCustomersHandler = async (req, res) => {
   try {
-    const { search, customerType, status } = req.query;
-    const result = await customerService.getCustomers(search, customerType, status);
-    return successResponse(res, result, "Customers fetched successfully");
+    const result = await customerService.getCustomers(req.query);
+    return successResponse(
+      res,
+      result.customers || result,
+      "Customers fetched successfully",
+      result.pagination
+    );
   } catch (error) {
     return handleControllerError(res, error);
   }

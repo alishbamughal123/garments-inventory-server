@@ -1,8 +1,10 @@
 const bcrypt = require("bcryptjs");
-
 const prisma = require("../../config/db");
-
 const generateToken = require("../../utils/generateToken");
+const {
+  getPaginationParams,
+  formatPaginationMeta,
+} = require("../../utils/pagination.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -83,20 +85,64 @@ const loginUser = async (payload) => {
   };
 };
 
-const getUsers = async () => {
-  return prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
+const getUsers = async (query = {}) => {
+  const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
+  const search = (query.search || query.query || "").trim();
+
+  const where = {};
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (query.role) {
+    where.role = query.role;
+  }
+
+  const select = {
+    id: true,
+    name: true,
+    email: true,
+    phoneNumber: true,
+    role: true,
+    isActive: true,
+    createdAt: true,
+  };
+
+  if (isAll) {
+    const users = await prisma.user.findMany({
+      where,
+      select,
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return {
+      users,
+      pagination: formatPaginationMeta(users.length, 1, users.length || 1),
+    };
+  }
+
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      select,
+      skip,
+      take,
+      orderBy: {
+        name: "asc",
+      },
+    }),
+  ]);
+
+  return {
+    users,
+    pagination: formatPaginationMeta(total, page, limit),
+  };
 };
 
 const updateProfile = async (userId, payload) => {

@@ -120,8 +120,13 @@ const placeOrder = async (req, res) => {
 const getMyOrders = async (req, res) => {
   try {
     const customerId = req.user.id;
-    const orders = await portalService.getCustomerOrders(customerId);
-    return successResponse(res, orders, "Orders fetched successfully");
+    const result = await portalService.getCustomerOrders(customerId, req.query);
+    return successResponse(
+      res,
+      result.orders || result,
+      "Orders fetched successfully",
+      result.pagination
+    );
   } catch (error) {
     return handleControllerError(res, error);
   }
@@ -134,9 +139,13 @@ const getMyOrders = async (req, res) => {
 */
 const getAllB2BOrders = async (req, res) => {
   try {
-    const { status, customerId } = req.query;
-    const orders = await portalService.getAllOrders(status, customerId);
-    return successResponse(res, orders, "All B2B orders fetched");
+    const result = await portalService.getAllOrders(req.query);
+    return successResponse(
+      res,
+      result.orders || result,
+      "All B2B orders fetched",
+      result.pagination
+    );
   } catch (error) {
     return handleControllerError(res, error);
   }
