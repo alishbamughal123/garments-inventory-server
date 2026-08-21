@@ -4,6 +4,10 @@ const {
   PrismaPg,
 } = require("@prisma/adapter-pg");
 
+if (process.env.NODE_ENV !== "production") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 const buildDatabaseUrl = () => {
   let rawUrl = process.env.DATABASE_URL;
 
@@ -51,18 +55,44 @@ const globalForPrisma =
 const connectionString =
   buildDatabaseUrl();
 
-const globalForPgPool =
-  globalThis;
+const fs = require("fs");
+const path = require("path");
+
+const getCaCert = () => {
+  const possiblePaths = [
+    path.join(__dirname, "../../ca-certificate.crt"),
+    path.join(__dirname, "../ca-certificate.crt"),
+    path.join(__dirname, "../../certs/ca-certificate.crt"),
+    path.join(process.cwd(), "ca-certificate.crt"),
+    path.join(process.cwd(), "certs/ca-certificate.crt"),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        return fs.readFileSync(p, "utf-8");
+      } catch (e) {}
+    }
+  }
+  return undefined;
+};
+
+const caCert = getCaCert();
+
+const globalForPgPool = globalThis;
 
 const pgPool =
   globalForPgPool.pgPool ||
   new Pool({
     connectionString,
     max: 3,
-    ssl: {
-      rejectUnauthorized:
-        false,
-    },
+    ssl: caCert
+      ? {
+          ca: caCert,
+          rejectUnauthorized: false,
+        }
+      : {
+          rejectUnauthorized: false,
+        },
   });
 
 const adapter =

@@ -10,7 +10,13 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:seed": "node prisma/seed.js",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "sync:dev": "node scripts/sync-all-tables.js",
+    "sync:live": "npx dotenv -e .env.live -- node scripts/sync-all-tables.js",
+    "studio:dev": "npx prisma studio",
+    "studio:live": "npx dotenv -e .env.live -- npx prisma studio",
+    "seed:live": "npx dotenv -e .env.live -- node prisma/seed.js",
+    "clone:data": "node scripts/clone-all-data.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

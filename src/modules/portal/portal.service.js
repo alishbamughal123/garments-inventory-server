@@ -123,6 +123,7 @@ const generateUniqueDeliveryNoteNumber = async (tx = prisma) => {
 const portalLogin = async (emailOrPhone, password) => {
   const cleanIdentifier = String(emailOrPhone || "").trim();
 
+  // 1. Check existing customer in customers table
   const customer = await prisma.customer.findFirst({
     where: {
       OR: [
@@ -170,7 +171,7 @@ const portalLogin = async (emailOrPhone, password) => {
     };
   }
 
-  // Fallback: check if an admin/staff User is logging in
+  // 2. Fallback: check User table (e.g. registered portal user or staff)
   const user = await prisma.user.findFirst({
     where: { email: { equals: cleanIdentifier, mode: "insensitive" } }
   });
@@ -202,9 +203,9 @@ const portalLogin = async (emailOrPhone, password) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        companyName: "Internal Staff",
+        companyName: user.role === "CUSTOMER" ? "B2B Client" : "Internal Staff",
         role: user.role,
-        customerCode: "STAFF"
+        customerCode: user.role === "CUSTOMER" ? "PORTAL-USER" : "STAFF"
       }
     };
   }
@@ -214,7 +215,8 @@ const portalLogin = async (emailOrPhone, password) => {
 
 /*
 |--------------------------------------------------------------------------
-| B2B CUSTOMER REGISTER (SELF-SERVICE SIGN UP / ACTIVATION)
+| B2B CUSTOMER REGISTER (SELF-SERVICE SIGN UP)
+| NOTE: Creates User account, DOES NOT pollute CRM customers list until order!
 |--------------------------------------------------------------------------
 */
 const registerCustomer = async (data) => {
@@ -226,11 +228,8 @@ const registerCustomer = async (data) => {
 
   const cleanEmail = email.trim().toLowerCase();
   const cleanPhone = (phone || "").replace(/\s+/g, "").trim();
-  const cleanAddress = (address || "").trim();
-  const cleanCity = (city || "").trim();
-  const cleanVat = (vatNumber || "").trim();
 
-  // Find if customer already exists in CRM by email or phone
+  // If already an existing customer in CRM, activate their portal password
   let existingCustomer = await prisma.customer.findFirst({
     where: {
       OR: [
@@ -242,20 +241,13 @@ const registerCustomer = async (data) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  // If customer already exists (e.g. created by admin in CRM or seeded), activate portal credentials & login
   if (existingCustomer) {
     const updatedCustomer = await prisma.customer.update({
       where: { id: existingCustomer.id },
       data: {
-        fullName: fullName.trim() || existingCustomer.fullName,
-        companyName: (companyName || fullName || existingCustomer.companyName).trim(),
         passwordHash,
         isPortalActive: true,
-        status: "ACTIVE",
-        ...(cleanPhone ? { phoneNumber: cleanPhone } : {}),
-        ...(cleanAddress ? { address: cleanAddress } : {}),
-        ...(cleanCity ? { city: cleanCity } : {}),
-        ...(cleanVat ? { vatNumber: cleanVat } : {})
+        status: "ACTIVE"
       }
     });
 
@@ -270,20 +262,6 @@ const registerCustomer = async (data) => {
       { expiresIn: "7d" }
     );
 
-    try {
-      await prisma.auditLog.create({
-        data: {
-          action: "CUSTOMER_PORTAL_ACTIVATED",
-          entity: "Customer",
-          entityId: updatedCustomer.id,
-          performedBy: updatedCustomer.fullName,
-          details: `Customer portal credentials activated/updated for (${updatedCustomer.customerCode})`
-        }
-      });
-    } catch (auditErr) {
-      console.warn("Audit log creation skipped:", auditErr.message);
-    }
-
     return {
       token,
       user: {
@@ -297,76 +275,62 @@ const registerCustomer = async (data) => {
     };
   }
 
-  // Create brand new customer
-  const customerCode = await generateUniqueCustomerCode(prisma);
-
-  let finalPhone = cleanPhone;
-  if (!finalPhone) {
-    finalPhone = `+47${Math.floor(10000000 + Math.random() * 90000000)}`;
-  }
-  let pExists = await prisma.customer.findUnique({ where: { phoneNumber: finalPhone } });
-  while (pExists) {
-    finalPhone = `+47${Math.floor(10000000 + Math.random() * 90000000)}`;
-    pExists = await prisma.customer.findUnique({ where: { phoneNumber: finalPhone } });
-  }
-
-  const customer = await prisma.customer.create({
-    data: {
-      customerCode,
-      fullName: fullName.trim(),
-      companyName: (companyName || fullName).trim(),
-      email: cleanEmail,
-      phoneNumber: finalPhone,
-      address: cleanAddress || null,
-      city: cleanCity || null,
-      vatNumber: cleanVat || null,
-      passwordHash,
-      isPortalActive: true,
-      status: "ACTIVE"
-    }
+  // Check if User already exists in User table
+  let existingUser = await prisma.user.findFirst({
+    where: { email: { equals: cleanEmail, mode: "insensitive" } }
   });
+
+  if (existingUser) {
+    existingUser = await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        name: fullName.trim() || existingUser.name,
+        passwordHash,
+        ...(cleanPhone ? { phoneNumber: cleanPhone } : {})
+      }
+    });
+  } else {
+    // Create new portal User (Role CUSTOMER) - NOT in customers table yet
+    existingUser = await prisma.user.create({
+      data: {
+        name: fullName.trim(),
+        email: cleanEmail,
+        phoneNumber: cleanPhone || null,
+        passwordHash,
+        role: "CUSTOMER",
+        isActive: true
+      }
+    });
+  }
 
   const token = jwt.sign(
     {
-      id: customer.id,
-      email: customer.email,
-      fullName: customer.fullName,
+      id: existingUser.id,
+      email: existingUser.email,
+      fullName: existingUser.name,
       role: "CUSTOMER"
     },
     getJwtSecret(),
     { expiresIn: "7d" }
   );
 
-  try {
-    await prisma.auditLog.create({
-      data: {
-        action: "CUSTOMER_REGISTERED_PORTAL",
-        entity: "Customer",
-        entityId: customer.id,
-        performedBy: customer.fullName,
-        details: `Customer registered via B2B portal (${customer.customerCode})`
-      }
-    });
-  } catch (auditErr) {
-    console.warn("Audit log creation skipped:", auditErr.message);
-  }
-
   return {
     token,
     user: {
-      id: customer.id,
-      name: customer.fullName,
-      email: customer.email,
-      companyName: customer.companyName,
+      id: existingUser.id,
+      name: existingUser.name,
+      email: existingUser.email,
+      companyName: (companyName || `${existingUser.name}'s Business`).trim(),
       role: "CUSTOMER",
-      customerCode: customer.customerCode
+      customerCode: "PORTAL-USER"
     }
   };
 };
 
 /*
 |--------------------------------------------------------------------------
-| B2B CUSTOMER GOOGLE AUTHENTICATION (WITH GOOGLE CRYPTOGRAPHIC VERIFICATION)
+| B2B CUSTOMER GOOGLE AUTHENTICATION
+| NOTE: Creates User account, DOES NOT pollute CRM customers list until order!
 |--------------------------------------------------------------------------
 */
 const googleAuthCustomer = async ({ idToken, credential, accessToken, email, name, googleId }) => {
@@ -388,7 +352,6 @@ const googleAuthCustomer = async ({ idToken, credential, accessToken, email, nam
         throw new Error("Google token does not contain a valid email.");
       }
 
-      // Check that Google has officially verified this email
       if (tokenInfo.email_verified === "false" || tokenInfo.email_verified === false) {
         throw new Error("Google email is not verified by Google.");
       }
@@ -398,11 +361,9 @@ const googleAuthCustomer = async ({ idToken, credential, accessToken, email, nam
       verifiedGoogleId = tokenInfo.sub || googleId;
     } catch (verifyErr) {
       console.error("Google token verification failed:", verifyErr.message);
-      // If token verification failed, reject untrusted login
       throw new Error(`Google verification failed: ${verifyErr.message}`);
     }
   } else if (accessToken) {
-    // Verify using Google userinfo API
     try {
       const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` }
@@ -431,65 +392,61 @@ const googleAuthCustomer = async ({ idToken, credential, accessToken, email, nam
   }
 
   const cleanEmail = verifiedEmail.trim().toLowerCase();
+  const displayName = (verifiedName || cleanEmail.split("@")[0]).trim();
 
+  // 1. Check if an official customer already exists in CRM
   let customer = await prisma.customer.findFirst({
     where: { email: { equals: cleanEmail, mode: "insensitive" } }
   });
 
-  if (!customer) {
-    const customerCode = await generateUniqueCustomerCode(prisma);
+  if (customer) {
+    const token = jwt.sign(
+      {
+        id: customer.id,
+        email: customer.email,
+        fullName: customer.fullName,
+        role: "CUSTOMER"
+      },
+      getJwtSecret(),
+      { expiresIn: "7d" }
+    );
+
+    return {
+      token,
+      user: {
+        id: customer.id,
+        name: customer.fullName,
+        email: customer.email,
+        companyName: customer.companyName,
+        role: "CUSTOMER",
+        customerCode: customer.customerCode
+      }
+    };
+  }
+
+  // 2. Customer does NOT exist in CRM. Create/find User account (NOT in customers table)
+  let user = await prisma.user.findFirst({
+    where: { email: { equals: cleanEmail, mode: "insensitive" } }
+  });
+
+  if (!user) {
     const dummyPasswordHash = await bcrypt.hash(verifiedGoogleId || "google-auth-secret", 10);
-
-    let phone = `+47${Math.floor(10000000 + Math.random() * 90000000)}`;
-    let phoneExists = await prisma.customer.findUnique({ where: { phoneNumber: phone } });
-    while (phoneExists) {
-      phone = `+47${Math.floor(10000000 + Math.random() * 90000000)}`;
-      phoneExists = await prisma.customer.findUnique({ where: { phoneNumber: phone } });
-    }
-
-    const displayName = (verifiedName || cleanEmail.split("@")[0]).trim();
-    const companyDisplayName = verifiedName ? `${verifiedName.trim()}'s Business` : "Nordic Business Client";
-
-    customer = await prisma.customer.create({
+    user = await prisma.user.create({
       data: {
-        customerCode,
-        fullName: displayName,
-        companyName: companyDisplayName,
+        name: displayName,
         email: cleanEmail,
-        phoneNumber: phone,
         passwordHash: dummyPasswordHash,
-        isPortalActive: true,
-        status: "ACTIVE"
+        role: "CUSTOMER",
+        isActive: true
       }
     });
-
-    try {
-      await prisma.auditLog.create({
-        data: {
-          action: "GOOGLE_AUTH_SIGNUP",
-          entity: "Customer",
-          entityId: customer.id,
-          performedBy: customer.fullName,
-          details: `Created new verified B2B customer via Google SSO (${customer.customerCode})`
-        }
-      });
-    } catch (auditErr) {
-      console.warn("Audit log creation skipped:", auditErr.message);
-    }
-  } else {
-    if (!customer.isPortalActive || customer.status !== "ACTIVE") {
-      customer = await prisma.customer.update({
-        where: { id: customer.id },
-        data: { isPortalActive: true, status: "ACTIVE" }
-      });
-    }
   }
 
   const token = jwt.sign(
     {
-      id: customer.id,
-      email: customer.email,
-      fullName: customer.fullName,
+      id: user.id,
+      email: user.email,
+      fullName: user.name,
       role: "CUSTOMER"
     },
     getJwtSecret(),
@@ -499,12 +456,12 @@ const googleAuthCustomer = async ({ idToken, credential, accessToken, email, nam
   return {
     token,
     user: {
-      id: customer.id,
-      name: customer.fullName,
-      email: customer.email,
-      companyName: customer.companyName,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      companyName: `${user.name}'s Business`,
       role: "CUSTOMER",
-      customerCode: customer.customerCode
+      customerCode: "PORTAL-USER"
     }
   };
 };
@@ -529,17 +486,19 @@ const getPortalCatalog = async (customerId, search = "", categoryId = null) => {
       }
     }
 
-    const customPrices = await prisma.customerPrice.findMany({
-      where: { customerId: resolvedCustomerId }
-    });
-    customPriceMap = new Map(customPrices.map(cp => [cp.productId, Number(cp.customPrice)]));
+    if (resolvedCustomerId) {
+      const customPrices = await prisma.customerPrice.findMany({
+        where: { customerId: resolvedCustomerId }
+      });
+      customPriceMap = new Map(customPrices.map(cp => [cp.productId, Number(cp.customPrice)]));
 
-    const accessRestrictions = await prisma.customerProductAccess.findMany({
-      where: { customerId: resolvedCustomerId }
-    });
-    forbiddenProductIds = new Set(
-      accessRestrictions.filter(a => !a.isAllowed).map(a => a.productId)
-    );
+      const accessRestrictions = await prisma.customerProductAccess.findMany({
+        where: { customerId: resolvedCustomerId }
+      });
+      forbiddenProductIds = new Set(
+        accessRestrictions.filter(a => !a.isAllowed).map(a => a.productId)
+      );
+    }
   }
 
   const whereClause = {
@@ -587,6 +546,7 @@ const getPortalCatalog = async (customerId, search = "", categoryId = null) => {
 |--------------------------------------------------------------------------
 */
 const getCustomerProfile = async (userIdOrCustomerId) => {
+  // 1. Check if ID belongs to a Customer in CRM
   let customer = await prisma.customer.findUnique({
     where: { id: userIdOrCustomerId },
     include: {
@@ -612,45 +572,63 @@ const getCustomerProfile = async (userIdOrCustomerId) => {
     };
   }
 
-  // Check if it is a staff user
+  // 2. Check if ID belongs to a User
   const user = await prisma.user.findUnique({
     where: { id: userIdOrCustomerId }
   });
 
   if (user) {
-    // Fetch active B2B customers for staff dropdown selector
-    const customers = await prisma.customer.findMany({
-      where: { status: "ACTIVE" },
-      select: {
-        id: true,
-        customerCode: true,
-        fullName: true,
-        companyName: true,
-        email: true,
-        phoneNumber: true,
-        address: true,
-        city: true
-      },
-      orderBy: { companyName: "asc" }
-    });
+    // If staff/admin user -> return staff mode with dropdown
+    if (user.role === "ADMIN" || user.role === "STAFF" || user.role === "MANAGER") {
+      const customers = await prisma.customer.findMany({
+        where: { status: "ACTIVE" },
+        select: {
+          id: true,
+          customerCode: true,
+          fullName: true,
+          companyName: true,
+          email: true,
+          phoneNumber: true,
+          address: true,
+          city: true
+        },
+        orderBy: { companyName: "asc" }
+      });
 
-    const staffCustomerMatch = await prisma.customer.findFirst({
-      where: { email: { equals: user.email, mode: "insensitive" } }
-    });
+      const staffCustomerMatch = await prisma.customer.findFirst({
+        where: { email: { equals: user.email, mode: "insensitive" } }
+      });
 
+      return {
+        isStaff: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        },
+        currentCustomer: staffCustomerMatch || null,
+        customers: customers.map(c => ({
+          ...c,
+          fullAddress: [c.address, c.city].filter(Boolean).join(", ")
+        }))
+      };
+    }
+
+    // Portal User (not yet placed an order -> returns clean profile)
     return {
-      isStaff: true,
-      user: {
+      isStaff: false,
+      customer: {
         id: user.id,
-        name: user.name,
+        customerCode: "NEW-CLIENT",
+        fullName: user.name,
+        companyName: `${user.name}'s Business`,
         email: user.email,
-        role: user.role
-      },
-      currentCustomer: staffCustomerMatch || null,
-      customers: customers.map(c => ({
-        ...c,
-        fullAddress: [c.address, c.city].filter(Boolean).join(", ")
-      }))
+        phoneNumber: user.phoneNumber || "",
+        address: "",
+        city: "",
+        fullAddress: ""
+      }
     };
   }
 
@@ -660,6 +638,7 @@ const getCustomerProfile = async (userIdOrCustomerId) => {
 /*
 |--------------------------------------------------------------------------
 | CREATE B2B CUSTOMER ORDER
+| NOTE: Converts registered User -> Official CRM Customer upon order placement!
 |--------------------------------------------------------------------------
 */
 const createPortalOrder = async (userIdOrCustomerId, payload) => {
@@ -693,9 +672,9 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
         where: { email: { equals: user.email, mode: "insensitive" } }
       });
 
+      // 🌟 IF USER HAS NO CUSTOMER ROW IN CRM, CREATE ONE NOW UPON FIRST ORDER!
       if (!customer) {
         const customerCode = await generateUniqueCustomerCode(prisma);
-        const dummyPasswordHash = await bcrypt.hash("internal_staff_password", 10);
         let phone = user.phoneNumber || `+47${Math.floor(10000000 + Math.random() * 90000000)}`;
         let pExists = await prisma.customer.findUnique({ where: { phoneNumber: phone } });
         while (pExists) {
@@ -703,24 +682,42 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
           pExists = await prisma.customer.findUnique({ where: { phoneNumber: phone } });
         }
 
+        const companyName = user.name ? `${user.name}'s Business` : "Nordic Business Client";
+
         customer = await prisma.customer.create({
           data: {
             customerCode,
-            fullName: user.name || "Staff Customer",
-            companyName: "Nordic Prowear (Internal Staff)",
+            fullName: user.name || "B2B Customer",
+            companyName,
             email: user.email,
             phoneNumber: phone,
-            passwordHash: dummyPasswordHash,
+            address: shippingAddress || null,
+            passwordHash: user.passwordHash,
             isPortalActive: true,
-            status: "ACTIVE"
+            status: "ACTIVE",
+            customerType: "REGULAR"
           }
         });
+
+        try {
+          await prisma.auditLog.create({
+            data: {
+              action: "CUSTOMER_ONBOARDED_VIA_ORDER",
+              entity: "Customer",
+              entityId: customer.id,
+              performedBy: customer.fullName,
+              details: `Customer added to CRM upon first B2B order placement (${customer.customerCode})`
+            }
+          });
+        } catch (auditErr) {
+          console.warn("Audit log creation skipped:", auditErr.message);
+        }
       }
     }
   }
 
   if (!customer) {
-    throw new Error("Customer record not found. Please log in again.");
+    throw new Error("Customer record could not be resolved. Please log in again.");
   }
 
   const customerId = customer.id;
@@ -848,7 +845,7 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
 | GET CUSTOMER PAST ORDERS
 |--------------------------------------------------------------------------
 */
-const getCustomerOrders = async (userIdOrCustomerId) => {
+const getCustomerOrders = async (userIdOrCustomerId, query = {}) => {
   let customer = await prisma.customer.findUnique({
     where: { id: userIdOrCustomerId }
   });

@@ -1,3 +1,7 @@
 node_modules
 .env
+.env.*
+.env.live
+*.crt
+*.pem
 dist

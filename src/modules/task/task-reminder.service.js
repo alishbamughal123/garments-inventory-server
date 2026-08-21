@@ -575,18 +575,10 @@ const startReminderWorker =
       return;
     }
 
-    workerInterval =
-      setInterval(
-        processDueReminders,
-        env.reminderWorkerIntervalMs
-      );
-
-    if (
-      typeof workerInterval.unref ===
-      "function"
-    ) {
-      workerInterval.unref();
-    }
+    workerInterval = setInterval(
+      processDueReminders,
+      env.reminderWorkerIntervalMs
+    );
 
     processDueReminders();
   };
