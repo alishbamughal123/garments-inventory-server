@@ -501,27 +501,53 @@ const getPortalCatalog = async (customerId, search = "", categoryId = null) => {
     }
   }
 
+  const trimmedSearch = search ? String(search).trim() : "";
+
   const whereClause = {
     isActive: true,
     ...(forbiddenProductIds.size > 0 ? { id: { notIn: Array.from(forbiddenProductIds) } } : {}),
     ...(categoryId ? { categoryId } : {}),
-    ...(search ? {
+    ...(trimmedSearch ? {
       OR: [
-        { productName: { contains: search, mode: "insensitive" } },
-        { sku: { contains: search, mode: "insensitive" } },
-        { styleNumber: { contains: search, mode: "insensitive" } },
-        { styleName: { contains: search, mode: "insensitive" } },
-        { color: { contains: search, mode: "insensitive" } }
+        { productName: { contains: trimmedSearch, mode: "insensitive" } },
+        { sku: { contains: trimmedSearch, mode: "insensitive" } },
+        { styleNumber: { contains: trimmedSearch, mode: "insensitive" } },
+        { baseStyleNumber: { contains: trimmedSearch, mode: "insensitive" } },
+        { styleName: { contains: trimmedSearch, mode: "insensitive" } },
+        { itemName: { contains: trimmedSearch, mode: "insensitive" } },
+        { color: { contains: trimmedSearch, mode: "insensitive" } },
+        { size: { contains: trimmedSearch, mode: "insensitive" } }
       ]
     } : {})
   };
 
   const products = await prisma.product.findMany({
     where: whereClause,
-    include: {
-      category: true,
-      barcodes: true
+    select: {
+      id: true,
+      sku: true,
+      productName: true,
+      baseStyleNumber: true,
+      styleNumber: true,
+      styleName: true,
+      itemName: true,
+      color: true,
+      size: true,
+      stockQuantity: true,
+      salePrice: true,
+      imageUrl: true,
+      fabric: true,
+      washingInstructions: true,
+      weightInKg: true,
+      categoryId: true,
+      category: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
     },
+    take: 200,
     orderBy: { productName: "asc" }
   });
 
