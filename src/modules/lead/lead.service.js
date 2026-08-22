@@ -40,6 +40,10 @@ const getLeads = async (searchOrQuery = "") => {
         { companyName: { contains: search, mode: "insensitive" } },
         { phoneNumber: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+        { designation: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+        { notes: { contains: search, mode: "insensitive" } },
       ],
     });
   }
@@ -52,9 +56,22 @@ const getLeads = async (searchOrQuery = "") => {
     conditions.push({ source: query.source });
   }
 
+  if (query.priority) {
+    conditions.push({ priority: query.priority });
+  }
+
+  if (query.segment) {
+    conditions.push({ segment: { contains: query.segment, mode: "insensitive" } });
+  }
+
   if (conditions.length > 0) {
     where.AND = conditions;
   }
+
+  const orderBy = [
+    { rank: "asc" },
+    { createdAt: "desc" },
+  ];
 
   if (isAll) {
     const leads = await prisma.lead.findMany({
@@ -62,9 +79,7 @@ const getLeads = async (searchOrQuery = "") => {
       include: {
         assignedTo: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
     });
 
     return {
@@ -82,9 +97,7 @@ const getLeads = async (searchOrQuery = "") => {
       },
       skip,
       take,
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
     }),
   ]);
 

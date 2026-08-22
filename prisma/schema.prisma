@@ -556,6 +556,20 @@ model Lead {
 
   expectedDealValue Float @default(0)
 
+  rank               Int?
+  legalEntity        String?
+  segment            String?
+  priority           String?
+  contactType        String?
+  verificationStatus String?
+  revenueMnok        Float?
+  financialYear      String?
+  revenueBasis       String?
+  county             String?
+  relevantStaff      String?
+  relevantTextiles   String?
+  healthcareNvk      String?
+
   notes String?
 
   assignedToId String?
