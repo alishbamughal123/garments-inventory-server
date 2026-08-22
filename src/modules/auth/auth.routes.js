@@ -39,7 +39,7 @@ router.put("/profile", authMiddleware, updateProfile);
 */
 
 router.post("/register", authMiddleware, roleMiddleware("ADMIN"), register);
-router.get("/users", authMiddleware, roleMiddleware("ADMIN"), getUsersHandler);
+router.get("/users", authMiddleware, getUsersHandler);
 router.put("/users/:id", authMiddleware, roleMiddleware("ADMIN"), updateUser);
 router.delete("/users/:id", authMiddleware, roleMiddleware("ADMIN"), deleteUser);
 
