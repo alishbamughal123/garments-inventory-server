@@ -11,6 +11,7 @@ const {
   update,
   getPriceHistoryHandler,
   remove,
+  bulkUpdateCostPriceHandler,
 } = require("./products.controller");
 
 const authMiddleware =
@@ -21,6 +22,16 @@ const roleMiddleware =
 
 const router =
   express.Router();
+
+router.post(
+  "/bulk-cost-price",
+  authMiddleware,
+  roleMiddleware(
+    "ADMIN",
+    "MANAGER"
+  ),
+  bulkUpdateCostPriceHandler
+);
 
 /*
 |--------------------------------------------------------------------------

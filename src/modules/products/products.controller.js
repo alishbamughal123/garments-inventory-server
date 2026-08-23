@@ -8,6 +8,7 @@ const {
   updateProduct,
   deleteProduct,
   getPriceHistory,
+  bulkUpdateCostPrices,
 } = require("./products.service");
 const {
   successResponse,
@@ -195,6 +196,24 @@ const uploadProductImages = async (req, res) => {
   }
 };
 
+const bulkUpdateCostPriceHandler = async (req, res) => {
+  try {
+    const { baseStyleNumber, colors, purchasePrice, reason } = req.body;
+    const result = await bulkUpdateCostPrices(
+      { baseStyleNumber, colors, purchasePrice, reason },
+      req.user?.id
+    );
+
+    return successResponse(
+      res,
+      result,
+      `Successfully updated cost price for ${result.count} variants`
+    );
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
 module.exports = {
   create,
   getAll,
@@ -207,5 +226,6 @@ module.exports = {
   getPriceHistoryHandler,
   remove,
   uploadProductImages,
+  bulkUpdateCostPriceHandler,
 };
 

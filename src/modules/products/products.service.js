@@ -684,6 +684,61 @@ const getPriceHistory = async (productId) => {
   });
 };
 
+const bulkUpdateCostPrices = async (payload, userId) => {
+  const { baseStyleNumber, colors, purchasePrice, reason } = payload;
+
+  if (!baseStyleNumber || purchasePrice === undefined || purchasePrice === null) {
+    throw new Error("Base style number and purchase price are required");
+  }
+
+  const whereClause = {
+    OR: [
+      { baseStyleNumber },
+      { styleNumber: { startsWith: baseStyleNumber } },
+      { sku: { startsWith: baseStyleNumber } },
+    ],
+  };
+
+  if (colors && Array.isArray(colors) && colors.length > 0) {
+    whereClause.color = { in: colors };
+  }
+
+  const products = await prisma.product.findMany({
+    where: whereClause,
+    select: { id: true, purchasePrice: true, salePrice: true, sku: true, color: true },
+  });
+
+  if (products.length === 0) {
+    return { count: 0, message: "No matching variants found", products: [] };
+  }
+
+  const productIds = products.map((p) => p.id);
+  const newPriceNum = Number(purchasePrice);
+
+  await prisma.product.updateMany({
+    where: { id: { in: productIds } },
+    data: { purchasePrice: newPriceNum },
+  });
+
+  const histories = products.map((p) => ({
+    productId: p.id,
+    oldSalePrice: p.salePrice,
+    newSalePrice: p.salePrice,
+    oldPurchasePrice: p.purchasePrice,
+    newPurchasePrice: newPriceNum,
+    reason: reason || "Bulk Cost Price Update via UI",
+    changedById: userId || null,
+  }));
+
+  if (histories.length > 0) {
+    await prisma.priceHistory.createMany({
+      data: histories,
+    });
+  }
+
+  return { count: products.length, updatedIds: productIds };
+};
+
 module.exports = {
   createProduct,
   getProducts,
@@ -694,4 +749,5 @@ module.exports = {
   updateProduct,
   deleteProduct,
   getPriceHistory,
+  bulkUpdateCostPrices,
 };
