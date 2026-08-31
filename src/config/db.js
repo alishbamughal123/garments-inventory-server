@@ -84,7 +84,9 @@ const pgPool =
   globalForPgPool.pgPool ||
   new Pool({
     connectionString,
-    max: 3,
+    max: 5,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
     ssl: caCert
       ? {
           ca: caCert,
