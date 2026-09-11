@@ -184,6 +184,22 @@ const updateB2BOrderStatus = async (req, res) => {
   }
 };
 
+/*
+|--------------------------------------------------------------------------
+| ADMIN: DELETE B2B ORDER
+|--------------------------------------------------------------------------
+*/
+const deleteB2BOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const result = await portalService.deleteOrder(id, userId);
+    return successResponse(res, result, "Order deleted successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
 module.exports = {
   loginCustomer,
   registerCustomer,
@@ -195,5 +211,6 @@ module.exports = {
   getMyOrders,
   getAllB2BOrders,
   fulfillB2BOrder,
-  updateB2BOrderStatus
+  updateB2BOrderStatus,
+  deleteB2BOrder
 };

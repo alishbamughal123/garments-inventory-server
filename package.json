@@ -16,7 +16,8 @@
     "studio:dev": "npx prisma studio",
     "studio:live": "npx dotenv -e .env.live -- npx prisma studio",
     "seed:live": "npx dotenv -e .env.live -- node prisma/seed.js",
-    "clone:data": "node scripts/clone-all-data.js"
+    "clone:data": "node scripts/clone-all-data.js",
+    "sync:article-updates": "node scripts/updateLive200127And10121.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

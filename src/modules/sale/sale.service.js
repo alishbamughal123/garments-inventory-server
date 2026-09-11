@@ -163,6 +163,15 @@ const getSales = async (query = {}) => {
         { invoiceNumber: { contains: search, mode: "insensitive" } },
         { customer: { fullName: { contains: search, mode: "insensitive" } } },
         { customer: { companyName: { contains: search, mode: "insensitive" } } },
+        {
+          saleItems: {
+            some: {
+              product: {
+                productName: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        },
       ];
     }
 

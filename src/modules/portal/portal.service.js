@@ -1113,31 +1113,134 @@ const fulfillOrder = async (orderId, userId) => {
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN: UPDATE ORDER STATUS
+| ADMIN: DELETE ORDER
+|--------------------------------------------------------------------------
+*/
+const deleteOrder = async (orderId, userId) => {
+  const order = await prisma.customerOrder.findUnique({
+    where: { id: orderId },
+    include: {
+      orderItems: true,
+      deliveryNote: true,
+      customer: true,
+    }
+  });
+
+  if (!order) {
+    throw new Error("B2B Customer Order not found");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Delete Delivery Note if exists
+    if (order.deliveryNote) {
+      await tx.deliveryNote.delete({
+        where: { id: order.deliveryNote.id }
+      });
+    }
+
+    // 2. Delete Order Items
+    await tx.customerOrderItem.deleteMany({
+      where: { orderId }
+    });
+
+    // 3. Revert Customer Totals
+    if (order.customerId && order.customer) {
+      try {
+        await tx.customer.update({
+          where: { id: order.customerId },
+          data: {
+            totalOrders: Math.max(0, (order.customer.totalOrders || 1) - 1),
+            totalSpent: Math.max(0, (order.customer.totalSpent || 0) - Number(order.totalAmount || 0)),
+          }
+        });
+      } catch (custErr) {
+        console.warn("Could not revert customer stats:", custErr.message);
+      }
+    }
+
+    // 4. Delete Customer Order
+    const deleted = await tx.customerOrder.delete({
+      where: { id: orderId }
+    });
+
+    // 5. Audit Log
+    try {
+      await tx.auditLog.create({
+        data: {
+          action: "B2B_ORDER_DELETED",
+          entity: "CustomerOrder",
+          entityId: orderId,
+          performedBy: userId || "ADMIN",
+          details: `Deleted B2B Customer Order ${order.orderNumber}`
+        }
+      });
+    } catch (auditErr) {
+      console.warn("Audit log creation skipped:", auditErr.message);
+    }
+
+    return deleted;
+  });
+
+  return result;
+};
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN: UPDATE B2B ORDER STATUS
 |--------------------------------------------------------------------------
 */
 const updateOrderStatus = async (orderId, status, userId) => {
-  const updated = await prisma.customerOrder.update({
+  const validStatuses = ["PENDING", "APPROVED", "PROCESSING", "SHIPPED", "COMPLETED", "CANCELLED"];
+  const normalizedStatus = (status || "").trim().toUpperCase();
+
+  if (!validStatuses.includes(normalizedStatus)) {
+    throw new Error(`Invalid order status '${status}'. Must be one of: ${validStatuses.join(", ")}`);
+  }
+
+  const existingOrder = await prisma.customerOrder.findUnique({
     where: { id: orderId },
-    data: { status },
-    include: { customer: true, orderItems: { include: { product: true } } }
+    include: {
+      customer: true,
+      orderItems: { include: { product: true } },
+      deliveryNote: true
+    }
+  });
+
+  if (!existingOrder) {
+    throw new Error("B2B Customer Order not found");
+  }
+
+  const updatedOrder = await prisma.customerOrder.update({
+    where: { id: orderId },
+    data: {
+      status: normalizedStatus,
+      ...(normalizedStatus === "COMPLETED" && !existingOrder.fulfilledAt ? { fulfilledAt: new Date(), fulfilledById: userId } : {})
+    },
+    include: {
+      customer: true,
+      orderItems: { include: { product: true } },
+      deliveryNote: true,
+      fulfilledBy: {
+        select: { id: true, name: true, email: true }
+      }
+    }
   });
 
   try {
     await prisma.auditLog.create({
       data: {
-        action: "ORDER_STATUS_CHANGED",
+        action: "B2B_ORDER_STATUS_UPDATED",
         entity: "CustomerOrder",
         entityId: orderId,
-        performedBy: userId,
-        details: `Changed order ${updated.orderNumber} status to ${status}`
+        performedBy: userId || "ADMIN",
+        details: `Updated B2B Order ${existingOrder.orderNumber} status from ${existingOrder.status} to ${normalizedStatus}`
       }
     });
   } catch (auditErr) {
     console.warn("Audit log creation skipped:", auditErr.message);
   }
 
-  return updated;
+  return updatedOrder;
 };
 
 module.exports = {
@@ -1153,5 +1256,6 @@ module.exports = {
   getCustomerOrders,
   getAllOrders,
   fulfillOrder,
-  updateOrderStatus
+  updateOrderStatus,
+  deleteOrder
 };

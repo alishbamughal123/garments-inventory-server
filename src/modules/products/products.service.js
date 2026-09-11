@@ -304,6 +304,40 @@ const buildProductWhere = (query = {}) => {
 |--------------------------------------------------------------------------
 */
 
+const productListSelect = {
+  id: true,
+  sku: true,
+  productName: true,
+  baseStyleNumber: true,
+  styleNumber: true,
+  styleName: true,
+  itemName: true,
+  brand: true,
+  color: true,
+  colorCode: true,
+  size: true,
+  fabric: true,
+  fabricComposition: true,
+  fabricWeight: true,
+  weightInKg: true,
+  purchasePrice: true,
+  salePrice: true,
+  stockQuantity: true,
+  minStockAlert: true,
+  imageUrl: true,
+  isContracted: true,
+  isActive: true,
+  categoryId: true,
+  createdAt: true,
+  updatedAt: true,
+  category: {
+    select: { id: true, name: true }
+  },
+  barcodes: {
+    select: { id: true, barcodeValue: true, barcodeType: true, isPrimary: true }
+  }
+};
+
 const getProducts = async (query = {}) => {
   const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
   const where = buildProductWhere(query);
@@ -311,10 +345,7 @@ const getProducts = async (query = {}) => {
   if (isAll) {
     const products = await prisma.product.findMany({
       where,
-      include: {
-        category: true,
-        barcodes: true,
-      },
+      select: productListSelect,
       orderBy: {
         createdAt: "desc",
       },
@@ -330,10 +361,7 @@ const getProducts = async (query = {}) => {
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      include: {
-        category: true,
-        barcodes: true,
-      },
+      select: productListSelect,
       skip,
       take,
       orderBy: {

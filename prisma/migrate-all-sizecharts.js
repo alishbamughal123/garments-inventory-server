@@ -557,7 +557,131 @@ const SIZE_CHART_200127 = {
   ]
 };
 
+// ==========================================
+// 7. SIZE CHART 10121 (Drammen / Sweat shirt)
+// ==========================================
+const SIZE_CHART_10121 = {
+  title: "Size Chart for Article 10121 (Drammen / Sweat shirt)",
+  applicableStyles: ["10121"],
+  unit: "inch",
+  sizes: [
+    { key: "XS", label: "XS", colorBadge: "yellow", colorHex: "#eab308", textHex: "#0f172a", bgLight: "#fef9c3", border: "#fde047" },
+    { key: "S", label: "S", colorBadge: "green", colorHex: "#22c55e", textHex: "#0f172a", bgLight: "#dcfce7", border: "#86efac" },
+    { key: "M", label: "M", colorBadge: "medium blue", colorHex: "#3b82f6", textHex: "#0f172a", bgLight: "#dbeafe", border: "#93c5fd" },
+    { key: "L", label: "L", colorBadge: "red", colorHex: "#ef4444", textHex: "#0f172a", bgLight: "#fee2e2", border: "#fca5a5" },
+    { key: "XL", label: "XL", colorBadge: "black", colorHex: "#1e293b", textHex: "#ffffff", bgLight: "#f1f5f9", border: "#cbd5e1" },
+    { key: "2XL", label: "2XL", colorBadge: "violet", colorHex: "#8b5cf6", textHex: "#ffffff", bgLight: "#ede9fe", border: "#c4b5fd" },
+    { key: "3XL", label: "3XL", colorBadge: "brown", colorHex: "#78350f", textHex: "#ffffff", bgLight: "#fef3c7", border: "#d97706" },
+    { key: "4XL", label: "4XL", colorBadge: "orange", colorHex: "#ea580c", textHex: "#ffffff", bgLight: "#ffedd5", border: "#fdba74" },
+    { key: "5XL", label: "5XL", colorBadge: "slate", colorHex: "#475569", textHex: "#ffffff", bgLight: "#f1f5f9", border: "#cbd5e1" },
+    { key: "6XL", label: "6XL", colorBadge: "indigo", colorHex: "#4f46e5", textHex: "#ffffff", bgLight: "#e0e7ff", border: "#a5b4fc" },
+    { key: "7XL", label: "7XL", colorBadge: "cyan", colorHex: "#0891b2", textHex: "#ffffff", bgLight: "#cffafe", border: "#67e8f9" },
+    { key: "8XL", label: "8XL", colorBadge: "pink", colorHex: "#db2777", textHex: "#ffffff", bgLight: "#fce7f3", border: "#f472b6" }
+  ],
+  measurements: [
+    {
+      code: "CHEST",
+      name: "Chest 1\" below armhole",
+      norwegianName: "Brystvidde (1\" under ermehull)",
+      tolerance: "± 0.5",
+      values: { XS: "19", S: "20.5", M: "22", L: "23.5", XL: "25", "2XL": "26.5", "3XL": "28", "4XL": "29.5", "5XL": "31", "6XL": "32.5", "7XL": "34", "8XL": "35" }
+    },
+    {
+      code: "LENGTH",
+      name: "Length HPS",
+      norwegianName: "Lengde fra HPS",
+      tolerance: "± 0.5",
+      values: { XS: "25.5", S: "28", M: "29", L: "30", XL: "31", "2XL": "32", "3XL": "33", "4XL": "34", "5XL": "36", "6XL": "37", "7XL": "39", "8XL": "40" }
+    },
+    {
+      code: "SHOULDER",
+      name: "Across shoulder",
+      norwegianName: "Skulderbredde",
+      tolerance: "± 0.5",
+      values: { XS: "16", S: "17.5", M: "19", L: "20.5", XL: "22", "2XL": "23.5", "3XL": "25", "4XL": "26.5", "5XL": "28", "6XL": "29.5", "7XL": "31", "8XL": "32" }
+    },
+    {
+      code: "ARMHOLE",
+      name: "Armhole opening",
+      norwegianName: "Ermehullsåpning",
+      tolerance: "± 0.5",
+      values: { XS: "9", S: "9.5", M: "10", L: "10.5", XL: "11", "2XL": "11.5", "3XL": "12", "4XL": "12.5", "5XL": "13", "6XL": "13.5", "7XL": "14", "8XL": "14.5" }
+    },
+    {
+      code: "SLEEVE_LENGTH",
+      name: "Sleeve length",
+      norwegianName: "Ermelengde",
+      tolerance: "± 0.5",
+      values: { XS: "23.5", S: "24", M: "24.5", L: "25", XL: "25.5", "2XL": "26", "3XL": "26.5", "4XL": "27", "5XL": "27.5", "6XL": "28", "7XL": "28.5", "8XL": "29" }
+    },
+    {
+      code: "SLEEVE_CUFF_OPENING",
+      name: "Sleeve cuff opening (cm)",
+      norwegianName: "Ermemansjett åpning (cm)",
+      tolerance: "± 0.25",
+      values: { XS: "8", S: "9.5", M: "9.5", L: "11", XL: "11", "2XL": "11", "3XL": "12.5", "4XL": "12.5", "5XL": "12.5", "6XL": "14", "7XL": "14", "8XL": "14" }
+    },
+    {
+      code: "SLEEVE_CUFF_HEIGHT",
+      name: "Sleeve cuff height",
+      norwegianName: "Ermemansjett høyde",
+      tolerance: "± 0.5",
+      values: { XS: "2", S: "2", M: "2", L: "2", XL: "2", "2XL": "2", "3XL": "2", "4XL": "2", "5XL": "2", "6XL": "2", "7XL": "2", "8XL": "2" }
+    },
+    {
+      code: "NECK_OPENING",
+      name: "Neck opening seam to seam",
+      norwegianName: "Halsåpning søm til søm",
+      tolerance: "± 0.5",
+      values: { XS: "7", S: "7.75", M: "8", L: "8.25", XL: "8.5", "2XL": "8.75", "3XL": "9", "4XL": "9.25", "5XL": "9.5", "6XL": "9.75", "7XL": "10", "8XL": "10.25" }
+    },
+    {
+      code: "NECK_DROP_BACK",
+      name: "Neck drop back neck tape lower to top of rib",
+      norwegianName: "Halsdybde bak fra bånd til ribbkant",
+      tolerance: "± 0.5",
+      values: { XS: "2.5", S: "2.5", M: "2.5", L: "2.5", XL: "2.5", "2XL": "2.5", "3XL": "2.5", "4XL": "2.5", "5XL": "2.5", "6XL": "2.5", "7XL": "2.5", "8XL": "2.5" }
+    },
+    {
+      code: "NECK_RIB_HEIGHT",
+      name: "Neck rib height",
+      norwegianName: "Halsribb høyde",
+      tolerance: "± 0.25",
+      values: { XS: "1", S: "1", M: "1", L: "1", XL: "1", "2XL": "1", "3XL": "1", "4XL": "1", "5XL": "1", "6XL": "1", "7XL": "1", "8XL": "1" }
+    },
+    {
+      code: "HALF_MOON_LENGTH",
+      name: "Half moon length",
+      norwegianName: "Halvmåne lengde",
+      tolerance: "± 0.5",
+      values: { XS: "3.5", S: "3.5", M: "3.5", L: "3.5", XL: "3.5", "2XL": "3.5", "3XL": "3.5", "4XL": "3.5", "5XL": "3.5", "6XL": "3.5", "7XL": "3.5", "8XL": "3.5" }
+    },
+    {
+      code: "HALF_MOON_WIDTH",
+      name: "Half moon width",
+      norwegianName: "Halvmåne bredde",
+      tolerance: "± 0.5",
+      values: { XS: "8.5", S: "9", M: "9", L: "9.5", XL: "9.5", "2XL": "10", "3XL": "10", "4XL": "10.5", "5XL": "10.5", "6XL": "11", "7XL": "11", "8XL": "11.5" }
+    },
+    {
+      code: "BOTTOM_RIB_WIDTH",
+      name: "Bottom rib width",
+      norwegianName: "Bunnribb vidde",
+      tolerance: "± 0.5",
+      values: { XS: "16", S: "17", M: "18", L: "19", XL: "20", "2XL": "21", "3XL": "22", "4XL": "23", "5XL": "24", "6XL": "25", "7XL": "26", "8XL": "27" }
+    },
+    {
+      code: "BOTTOM_RIB_DEPTH",
+      name: "Bottom rib depth",
+      norwegianName: "Bunnribb dybde",
+      tolerance: "± 0.5",
+      values: { XS: "2.5", S: "2.5", M: "2.5", L: "2.5", XL: "2.5", "2XL": "2.5", "3XL": "2.5", "4XL": "2.5", "5XL": "2.5", "6XL": "2.5", "7XL": "2.5", "8XL": "2.5" }
+    }
+  ]
+};
+
 const ALL_CHARTS = [
+  { styles: ["10121"], chart: SIZE_CHART_10121 },
   { styles: ["20110"], chart: SIZE_CHART_20110 },
   { styles: ["20111"], chart: SIZE_CHART_20111 },
   { styles: ["200120", "200121", "200122"], chart: SIZE_CHART_200120 },

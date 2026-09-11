@@ -28,7 +28,7 @@ const buildDatabaseUrl = () => {
     ) {
       url.searchParams.set(
         "connection_limit",
-        "3"
+        "10"
       );
     }
 
@@ -39,7 +39,7 @@ const buildDatabaseUrl = () => {
     ) {
       url.searchParams.set(
         "pool_timeout",
-        "20"
+        "30"
       );
     }
 
@@ -80,13 +80,12 @@ const caCert = getCaCert();
 
 const globalForPgPool = globalThis;
 
-const pgPool =
-  globalForPgPool.pgPool ||
-  new Pool({
+const createPgPool = () => {
+  const pool = new Pool({
     connectionString,
-    max: 5,
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
+    max: 15,
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000,
     ssl: caCert
       ? {
           ca: caCert,
@@ -96,6 +95,16 @@ const pgPool =
           rejectUnauthorized: false,
         },
   });
+
+  pool.on("error", (err) => {
+    console.warn("Unexpected error on idle pg client:", err.message);
+  });
+
+  return pool;
+};
+
+const pgPool =
+  globalForPgPool.pgPool || createPgPool();
 
 const adapter =
   new PrismaPg(pgPool);

@@ -20,5 +20,6 @@ router.get("/orders/my", authMiddleware, portalController.getMyOrders);
 router.get("/admin/orders", authMiddleware, portalController.getAllB2BOrders);
 router.post("/admin/orders/:id/fulfill", authMiddleware, portalController.fulfillB2BOrder);
 router.patch("/admin/orders/:id/status", authMiddleware, portalController.updateB2BOrderStatus);
+router.delete("/admin/orders/:id", authMiddleware, portalController.deleteB2BOrder);
 
 module.exports = router;
