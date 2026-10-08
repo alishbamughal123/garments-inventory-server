@@ -134,7 +134,7 @@ const createProduct = async (
                 normalizedPayload.washingInstructionsImageUrl || "/uploads/placeholders/default-washing.svg",
 
               washingInstructions:
-                normalizedPayload.washingInstructions || "40°C Standard Wash - Gentle Cycle. Do Not Bleach. Tumble Dry Low.",
+                normalizedPayload.washingInstructions || "Do Not Bleach. Tumble Dry Low.",
 
               isContracted:
                 normalizedPayload.isContracted !== undefined ? normalizedPayload.isContracted : false,

@@ -34,7 +34,7 @@ async function ensureDefaultAdmin() {
       data: {
         imageUrl: "/uploads/placeholders/default-article.svg",
         washingInstructionsImageUrl: "/uploads/placeholders/default-washing.svg",
-        washingInstructions: "40°C Standard Wash. Do Not Bleach. Tumble Dry Low. Iron Medium Heat.",
+        washingInstructions: "Do Not Bleach. Tumble Dry Low. Iron Medium Heat.",
         isContracted: true,
       },
     });

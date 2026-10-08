@@ -129,7 +129,7 @@ async function syncRecords() {
             isActive: true,
             imageUrl: "/uploads/placeholders/default-article.svg",
             washingInstructionsImageUrl: "/uploads/placeholders/default-washing.svg",
-            washingInstructions: "40°C Standard Wash. Do Not Bleach. Tumble Dry Low.",
+            washingInstructions: "Do Not Bleach. Tumble Dry Low.",
             barcodes: {
               create: {
                 barcodeValue,
