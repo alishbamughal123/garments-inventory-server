@@ -260,19 +260,21 @@ const getSaleById = async (id) => {
 */
 
 const deleteSale = async (id, userId) => {
-  const sale = await prisma.sale.findUnique({
-    where: { id },
-    include: {
-      saleItems: true,
-      customer: true,
-    },
-  });
-
-  if (!sale) {
-    throw new Error("Sale not found");
-  }
-
   return await prisma.$transaction(async (tx) => {
+    // Read inside the transaction so a double-click / concurrent delete
+    // cannot revert stock twice or fail on a record that is already gone.
+    const sale = await tx.sale.findUnique({
+      where: { id },
+      include: {
+        saleItems: true,
+        customer: true,
+      },
+    });
+
+    if (!sale) {
+      throw new Error("Sale not found");
+    }
+
     let effectiveUserId = userId;
     if (!effectiveUserId) {
       const defaultUser = await tx.user.findFirst();
@@ -329,9 +331,15 @@ const deleteSale = async (id, userId) => {
     });
 
     // 4. DELETE SALE
-    return await tx.sale.delete({
+    const { count } = await tx.sale.deleteMany({
       where: { id },
     });
+
+    if (count === 0) {
+      throw new Error("Sale not found");
+    }
+
+    return sale;
   });
 };
 
