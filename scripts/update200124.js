@@ -37,7 +37,7 @@ const sharedData = {
   fabric: "100% bomull",
   fabricComposition: "100% bomull",
   fabricWeight: "210 g/m²",
-  washingInstructions: "Vask 75°C • Vaskes separat • Må ikke blekes • Tørketrommel tillatt • Strykes på middels varme • Profesjonell rens tillatt",
+  washingInstructions: "Vask 85°C • Vaskes separat • Må ikke blekes • Tørketrommel tillatt • Strykes på middels varme • Profesjonell rens tillatt",
   washingInstructionsImageUrl: "/uploads/washing/washing-instructions200124.png",
   description: "Denne buksen til dame har en middels høy midje og er utviklet for høy komfort gjennom hele arbeidsdagen. Det klassiske 5-lommers designet gir et profesjonelt uttrykk og god plass til nødvendige arbeidsredskaper. Den fleksible elastiske linningen sikrer optimal passform og god bevegelsesfrihet.",
   isActive: true,
