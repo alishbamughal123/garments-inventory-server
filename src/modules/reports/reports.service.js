@@ -275,7 +275,7 @@ const getStockInReport = async (query = {}) => {
   };
 };
 
-// 3. Stock Out Report (Includes Customer & Parcel Weight)
+// 3. Stock Out Report (Includes Customer)
 const getStockOutReport = async (query = {}) => {
   const createdAt = buildCreatedAtFilter(query.from, query.to);
   const transactions = await prisma.inventoryTransaction.findMany({
@@ -294,12 +294,9 @@ const getStockOutReport = async (query = {}) => {
   });
 
   let totalQtyOut = 0;
-  let totalParcelWeightKg = 0;
 
   const items = transactions.map(t => {
     totalQtyOut += t.quantity;
-    const weight = t.totalWeightKg || 0;
-    totalParcelWeightKg += weight;
 
     return {
       id: t.id,
@@ -312,8 +309,6 @@ const getStockOutReport = async (query = {}) => {
       quantity: t.quantity,
       previousStock: t.previousStock,
       newStock: t.newStock,
-      packagingWeightKg: t.packagingWeightKg || 0.2,
-      totalWeightKg: roundToTwo(weight),
       performedBy: t.performedBy?.name || "System"
     };
   });
@@ -323,8 +318,7 @@ const getStockOutReport = async (query = {}) => {
   return {
     summary: {
       totalTransactions: transactions.length,
-      totalQuantityOut: totalQtyOut,
-      totalParcelWeightKg: roundToTwo(totalParcelWeightKg)
+      totalQuantityOut: totalQtyOut
     },
     items: paginatedItems,
     pagination
@@ -349,12 +343,10 @@ const getCustomerOrdersReport = async (query = {}) => {
   });
 
   let grandTotalSum = 0;
-  let totalWeightSum = 0;
 
   const items = orders.map(o => {
     const amount = Number(o.totalAmount);
     grandTotalSum += amount;
-    totalWeightSum += o.totalParcelWeight;
 
     return {
       id: o.id,
@@ -367,9 +359,6 @@ const getCustomerOrdersReport = async (query = {}) => {
       subtotal: Number(o.subtotal),
       tax: Number(o.tax),
       totalAmount: amount,
-      garmentWeightKg: o.garmentWeightKg,
-      packagingWeightKg: o.packagingWeightKg,
-      totalParcelWeight: o.totalParcelWeight,
       deliveryNoteNumber: o.deliveryNote?.deliveryNoteNumber || "N/A"
     };
   });
@@ -379,8 +368,7 @@ const getCustomerOrdersReport = async (query = {}) => {
   return {
     summary: {
       totalOrders: orders.length,
-      totalRevenue: roundToTwo(grandTotalSum),
-      totalParcelWeightKg: roundToTwo(totalWeightSum)
+      totalRevenue: roundToTwo(grandTotalSum)
     },
     items: paginatedItems,
     pagination
@@ -529,8 +517,7 @@ const getOpenOrdersReport = async (query = {}) => {
     phone: o.customer.phoneNumber,
     status: o.status,
     totalItems: o.orderItems.reduce((sum, i) => sum + i.quantity, 0),
-    totalAmount: Number(o.totalAmount),
-    totalParcelWeight: o.totalParcelWeight
+    totalAmount: Number(o.totalAmount)
   }));
 
   const { items: paginatedItems, pagination } = paginateReportItems(items, query);

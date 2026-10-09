@@ -682,7 +682,7 @@ const getCustomerProfile = async (userIdOrCustomerId) => {
 |--------------------------------------------------------------------------
 */
 const createPortalOrder = async (userIdOrCustomerId, payload) => {
-  const { items, shippingAddress, notes, packagingWeightKg = 0.2, targetCustomerId } = payload || {};
+  const { items, shippingAddress, notes, targetCustomerId } = payload || {};
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw new Error("Order must contain at least one item.");
@@ -778,8 +778,6 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
   const productMap = new Map(products.map(p => [p.id, p]));
 
   let subtotal = 0;
-  let totalGarmentWeightKg = 0;
-  let hasMissingWeights = false;
 
   const orderItemsData = items.map(item => {
     const product = productMap.get(item.productId);
@@ -793,30 +791,19 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
 
     const quantity = Math.max(1, parseInt(item.quantity, 10) || 1);
     const totalPrice = Number((unitPrice * quantity).toFixed(2));
-    const unitWeight = Number(product.weightInKg || 0);
-    if (unitWeight === 0) {
-      hasMissingWeights = true;
-    }
-    const itemTotalWeight = Number((unitWeight * quantity).toFixed(3));
 
     subtotal += totalPrice;
-    totalGarmentWeightKg += itemTotalWeight;
 
     return {
       productId: product.id,
       quantity,
       unitPrice,
-      unitWeight,
       totalPrice,
-      totalWeight: itemTotalWeight,
       selectedLogo: item.selectedLogo || null,
       customNote: item.customNote || null
     };
   });
 
-  const parsedPkgWeight = Number(Number(packagingWeightKg || 0.2).toFixed(2));
-  const parsedGarmentWeight = Number(totalGarmentWeightKg.toFixed(2));
-  const totalParcelWeight = Number((parsedGarmentWeight + parsedPkgWeight).toFixed(2));
   const subtotalRounded = Number(subtotal.toFixed(2));
   const tax = Number((subtotalRounded * 0.25).toFixed(2));
   const grandTotal = Number((subtotalRounded + tax).toFixed(2));
@@ -831,9 +818,6 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
       subtotal: subtotalRounded,
       tax,
       totalAmount: grandTotal,
-      garmentWeightKg: parsedGarmentWeight,
-      packagingWeightKg: parsedPkgWeight,
-      totalParcelWeight,
       notes: notes || "Order placed via Customer Portal",
       shippingAddress: shippingAddress || customer.address || "",
       orderItems: {
@@ -867,7 +851,7 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
         entity: "CustomerOrder",
         entityId: order.id,
         performedBy: customer.fullName || "B2B Client",
-        details: `Placed B2B order ${order.orderNumber} for total ${grandTotal.toFixed(2)} NOK (Parcel weight: ${totalParcelWeight.toFixed(2)} kg)`
+        details: `Placed B2B order ${order.orderNumber} for total ${grandTotal.toFixed(2)} NOK`
       }
     });
   } catch (auditErr) {
@@ -875,8 +859,7 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
   }
 
   return {
-    order,
-    hasMissingWeights
+    order
   };
 };
 
@@ -923,9 +906,6 @@ const buildOrderSearch = (search, includeCustomer) => {
     ...numberCondition("totalAmount", search),
     ...numberCondition("subtotal", search),
     ...numberCondition("tax", search),
-    ...numberCondition("totalParcelWeight", search),
-    ...numberCondition("garmentWeightKg", search),
-    ...numberCondition("packagingWeightKg", search),
     ...dateCondition("createdAt", search),
   ];
 };
@@ -1120,9 +1100,7 @@ const fulfillOrder = async (orderId, userId) => {
           notes: `Fulfillment of Customer Order ${order.orderNumber}`,
           productId: item.productId,
           performedById: userId,
-          customerId: order.customerId,
-          packagingWeightKg: order.packagingWeightKg,
-          totalWeightKg: item.totalWeight + (order.packagingWeightKg / order.orderItems.length)
+          customerId: order.customerId
         }
       });
     }
@@ -1134,9 +1112,6 @@ const fulfillOrder = async (orderId, userId) => {
         deliveryNoteNumber,
         customerId: order.customerId,
         orderId: order.id,
-        garmentWeightKg: order.garmentWeightKg,
-        packagingWeightKg: order.packagingWeightKg,
-        totalParcelWeight: order.totalParcelWeight,
         notes: `Delivery note for B2B Order ${order.orderNumber}`
       }
     });

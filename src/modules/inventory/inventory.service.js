@@ -87,11 +87,11 @@ const stockIn = async (payload, userId) => {
 
 /*
 |--------------------------------------------------------------------------
-| STOCK OUT (Task 2: Mandatory customer selection & Parcel weight calc)
+| STOCK OUT (Task 2: Mandatory customer selection)
 |--------------------------------------------------------------------------
 */
 const stockOut = async (payload, userId) => {
-  const { customerId, barcode, items, notes, packagingWeightKg = 0.2 } = payload;
+  const { customerId, barcode, items, notes } = payload;
 
   if (!customerId) {
     throw new Error("Mandatory Customer Selection: Stock Out requires selecting a customer.");
@@ -116,8 +116,6 @@ const stockOut = async (payload, userId) => {
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    let totalGarmentWeight = 0;
-    let hasMissingWeights = false;
     const createdTransactions = [];
 
     for (const item of stockItems) {
@@ -130,13 +128,6 @@ const stockOut = async (payload, userId) => {
 
       const previousStock = product.stockQuantity;
       const newStock = previousStock - qty;
-
-      const unitWeight = Number(product.weightInKg || 0);
-      if (unitWeight === 0) {
-        hasMissingWeights = true;
-      }
-      const itemWeight = unitWeight * qty;
-      totalGarmentWeight += itemWeight;
 
       await tx.product.update({
         where: { id: product.id },
@@ -152,17 +143,13 @@ const stockOut = async (payload, userId) => {
           notes: notes || "Stock deducted for customer shipment",
           productId: product.id,
           performedById: userId,
-          customerId: customer.id,
-          packagingWeightKg: Number(packagingWeightKg),
-          totalWeightKg: itemWeight + (Number(packagingWeightKg) / stockItems.length)
+          customerId: customer.id
         },
         include: { product: true }
       });
 
       createdTransactions.push(transaction);
     }
-
-    const totalParcelWeight = totalGarmentWeight + Number(packagingWeightKg);
 
     // Create Delivery Note Record in CRM
     const dnCount = await tx.deliveryNote.count();
@@ -174,9 +161,6 @@ const stockOut = async (payload, userId) => {
         deliveryNoteNumber,
         customerId: customer.id,
         transactionId: createdTransactions[0]?.id,
-        garmentWeightKg: totalGarmentWeight,
-        packagingWeightKg: Number(packagingWeightKg),
-        totalParcelWeight,
         notes: notes || `Delivery note for ${customer.companyName || customer.fullName}`
       }
     });
@@ -187,18 +171,14 @@ const stockOut = async (payload, userId) => {
         entity: "InventoryTransaction",
         entityId: createdTransactions[0]?.id,
         performedBy: userId,
-        details: `Stock out performed for customer ${customer.fullName}. Created Delivery Note ${deliveryNoteNumber} (Total Parcel Weight: ${totalParcelWeight.toFixed(2)} kg)`
+        details: `Stock out performed for customer ${customer.fullName}. Created Delivery Note ${deliveryNoteNumber}`
       }
     });
 
     return {
       customer,
       transactions: createdTransactions,
-      deliveryNote,
-      garmentWeightKg: totalGarmentWeight,
-      packagingWeightKg: Number(packagingWeightKg),
-      totalParcelWeight,
-      hasMissingWeights
+      deliveryNote
     };
   });
 
@@ -256,14 +236,6 @@ const getTransactions = async (typeOrQuery = null, customerId = null) => {
       where.OR.push({ quantity: intValue });
       where.OR.push({ previousStock: intValue });
       where.OR.push({ newStock: intValue });
-    }
-
-    // Parcel weight column (shown with 2 decimals)
-    const weightValue = parseSearchNumber(search.replace(/\s*kg$/i, ""));
-    if (weightValue !== null) {
-      where.OR.push({
-        totalWeightKg: { gte: weightValue - 0.005, lt: weightValue + 0.005 },
-      });
     }
 
     // Fallback delivery note label shown as DN-<first 8 chars of id>
