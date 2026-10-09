@@ -11,6 +11,11 @@ const {
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
 
+const {
+  enumCondition,
+  dateCondition,
+} = require("../../utils/columnSearch.helper");
+
 const terminalStatuses = [
   "COMPLETED",
   "CANCELLED",
@@ -250,12 +255,37 @@ const buildTaskWhereClause = (
   const conditions = [];
 
   if (filters.title) {
+    const term = String(filters.title).trim();
+    const insensitive = (value) => ({
+      contains: value,
+      mode: "insensitive",
+    });
+
     conditions.push({
-      title: {
-        contains:
-          filters.title,
-        mode: "insensitive",
-      },
+      OR: [
+        { title: insensitive(term) },
+        { description: insensitive(term) },
+        { assignedUser: { name: insensitive(term) } },
+        {
+          customer: {
+            OR: [
+              { fullName: insensitive(term) },
+              { companyName: insensitive(term) },
+            ],
+          },
+        },
+        {
+          lead: {
+            OR: [
+              { fullName: insensitive(term) },
+              { companyName: insensitive(term) },
+            ],
+          },
+        },
+        ...enumCondition("status", "TaskStatus", term),
+        ...enumCondition("priority", "TaskPriority", term),
+        ...dateCondition("dueDate", term),
+      ],
     });
   }
 

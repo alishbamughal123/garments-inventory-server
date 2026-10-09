@@ -4,6 +4,11 @@ const {
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
 
+const {
+  enumCondition,
+  dateCondition,
+} = require("../../utils/columnSearch.helper");
+
 const generateTicketNumber = async () => {
   const count = await prisma.supportTicket.count();
   const serial = String(count + 1).padStart(4, "0");
@@ -45,7 +50,19 @@ const getTickets = async (filters = {}) => {
       { ticketNumber: { contains: search, mode: "insensitive" } },
       { subject: { contains: search, mode: "insensitive" } },
       { description: { contains: search, mode: "insensitive" } },
+      { category: { contains: search, mode: "insensitive" } },
+      { customer: { fullName: { contains: search, mode: "insensitive" } } },
+      { customer: { companyName: { contains: search, mode: "insensitive" } } },
+      { assignedTo: { name: { contains: search, mode: "insensitive" } } },
+      { createdBy: { name: { contains: search, mode: "insensitive" } } },
+      ...enumCondition("priority", "TicketPriority", search),
+      ...enumCondition("status", "TicketStatus", search),
+      ...dateCondition("createdAt", search),
     ];
+    // "General Support" is shown for tickets without a customer
+    if ("general support".includes(String(search).trim().toLowerCase()) && String(search).trim().length >= 3) {
+      where.OR.push({ customerId: null });
+    }
   }
 
   if (isAll) {

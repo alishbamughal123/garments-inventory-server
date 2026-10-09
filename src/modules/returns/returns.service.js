@@ -3,6 +3,10 @@ const {
   getPaginationParams,
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
+const {
+  parseSearchInt,
+  parseSearchDateRange,
+} = require("../../utils/search.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -181,12 +185,31 @@ const getReturns = async (query = {}) => {
   }
 
   if (search) {
+    const contains = { contains: search, mode: "insensitive" };
+
     where.OR = [
-      { returnReason: { contains: search, mode: "insensitive" } },
-      { product: { productName: { contains: search, mode: "insensitive" } } },
-      { product: { sku: { contains: search, mode: "insensitive" } } },
-      { product: { styleNumber: { contains: search, mode: "insensitive" } } },
+      { returnReason: contains },
+      { conditionStatus: contains },
+      { product: { productName: contains } },
+      { product: { sku: contains } },
+      { product: { styleNumber: contains } },
+      { product: { color: contains } },
+      { product: { size: contains } },
+      { product: { brand: contains } },
+      { processedBy: { name: contains } },
     ];
+
+    // Quantity column
+    const intValue = parseSearchInt(search);
+    if (intValue !== null) {
+      where.OR.push({ returnQuantity: intValue });
+    }
+
+    // Date column
+    const dateRange = parseSearchDateRange(search);
+    if (dateRange) {
+      where.OR.push({ createdAt: dateRange });
+    }
   }
 
   if (isAll) {

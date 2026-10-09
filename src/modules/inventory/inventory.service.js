@@ -3,6 +3,21 @@ const {
   getPaginationParams,
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
+const {
+  parseSearchInt,
+  parseSearchNumber,
+  parseSearchDateRange,
+  matchEnumValues,
+} = require("../../utils/search.helper");
+
+const TRANSACTION_TYPES = [
+  "STOCK_IN",
+  "STOCK_OUT",
+  "RETURN",
+  "EXCHANGE",
+  "ADJUSTMENT",
+  "DAMAGE",
+];
 
 /*
 |--------------------------------------------------------------------------
@@ -210,13 +225,58 @@ const getTransactions = async (typeOrQuery = null, customerId = null) => {
   };
 
   if (search) {
+    const contains = { contains: search, mode: "insensitive" };
+
     where.OR = [
-      { product: { productName: { contains: search, mode: "insensitive" } } },
-      { product: { sku: { contains: search, mode: "insensitive" } } },
-      { product: { styleNumber: { contains: search, mode: "insensitive" } } },
-      { customer: { fullName: { contains: search, mode: "insensitive" } } },
-      { customer: { companyName: { contains: search, mode: "insensitive" } } },
+      { product: { productName: contains } },
+      { product: { sku: contains } },
+      { product: { styleNumber: contains } },
+      { product: { color: contains } },
+      { product: { size: contains } },
+      { product: { brand: contains } },
+      { product: { category: { name: contains } } },
+      { customer: { fullName: contains } },
+      { customer: { companyName: contains } },
+      { customer: { customerCode: contains } },
+      { performedBy: { name: contains } },
+      { notes: contains },
+      { referenceNumber: contains },
+      { deliveryNote: { deliveryNoteNumber: contains } },
     ];
+
+    // Type column (STOCK_IN / "Stock In" ...)
+    const typeMatches = matchEnumValues(TRANSACTION_TYPES, search);
+    if (typeMatches.length > 0) {
+      where.OR.push({ transactionType: { in: typeMatches } });
+    }
+
+    // Numeric columns: quantity, previous, new
+    const intValue = parseSearchInt(search);
+    if (intValue !== null) {
+      where.OR.push({ quantity: intValue });
+      where.OR.push({ previousStock: intValue });
+      where.OR.push({ newStock: intValue });
+    }
+
+    // Parcel weight column (shown with 2 decimals)
+    const weightValue = parseSearchNumber(search.replace(/\s*kg$/i, ""));
+    if (weightValue !== null) {
+      where.OR.push({
+        totalWeightKg: { gte: weightValue - 0.005, lt: weightValue + 0.005 },
+      });
+    }
+
+    // Fallback delivery note label shown as DN-<first 8 chars of id>
+    const dnFallback = search.match(/^dn-([0-9a-f-]{1,36})$/i);
+    if (dnFallback) {
+      where.OR.push({ id: { startsWith: dnFallback[1].toLowerCase() } });
+    }
+
+    // Date column
+    const dateRange = parseSearchDateRange(search);
+    if (dateRange) {
+      where.OR.push({ createdAt: dateRange });
+    }
   }
 
   if (isAll) {

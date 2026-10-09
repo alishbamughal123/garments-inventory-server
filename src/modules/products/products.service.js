@@ -8,6 +8,10 @@ const {
   getPaginationParams,
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
+const {
+  parseSearchInt,
+  parseSearchNumber,
+} = require("../../utils/search.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -250,7 +254,82 @@ const createProduct = async (
   return finalProduct;
 };
 
-const buildProductWhere = (query = {}) => {
+const LOW_STOCK_LABELS = ["low stock", "lavt lager"];
+const IN_STOCK_LABELS = ["in stock", "på lager"];
+
+const labelMatches = (labels, term) =>
+  term.length >= 3 && labels.some((label) => label.includes(term));
+
+// Searchable columns shown in the article tables (Articles + Low Stock pages).
+const buildProductSearchOr = (search) => {
+  const contains = { contains: search, mode: "insensitive" };
+  const conditions = [
+    { styleNumber: contains },
+    { baseStyleNumber: contains },
+    { styleName: contains },
+    { itemName: contains },
+    { productName: contains },
+    { sku: contains },
+    { brand: contains },
+    { color: contains },
+    { colorCode: contains },
+    { size: contains },
+    { category: { name: contains } },
+    { barcodes: { some: { barcodeValue: contains } } },
+  ];
+
+  const intValue = parseSearchInt(search);
+  if (intValue !== null) {
+    conditions.push({ stockQuantity: intValue });
+    conditions.push({ minStockAlert: intValue });
+  }
+
+  const numValue = parseSearchNumber(search.replace(/^nok\s*/i, ""));
+  if (numValue !== null) {
+    conditions.push({ purchasePrice: numValue });
+    conditions.push({ salePrice: numValue });
+  }
+
+  return conditions;
+};
+
+// Computed columns (status badge, total cost) cannot be expressed as a plain
+// Prisma filter, so resolve them to a list of matching product ids.
+const buildComputedProductConditions = async (search) => {
+  const term = search.toLowerCase();
+  const matchLow = labelMatches(LOW_STOCK_LABELS, term);
+  const matchIn = labelMatches(IN_STOCK_LABELS, term);
+  const numValue = parseSearchNumber(search.replace(/^nok\s*/i, ""));
+
+  if (matchLow && matchIn) return [{}];
+  if (!matchLow && !matchIn && numValue === null) return [];
+
+  const rows = await prisma.product.findMany({
+    select: {
+      id: true,
+      stockQuantity: true,
+      minStockAlert: true,
+      purchasePrice: true,
+    },
+  });
+
+  const ids = rows
+    .filter((row) => {
+      const isLow = row.stockQuantity <= row.minStockAlert;
+      if (matchLow && isLow) return true;
+      if (matchIn && !isLow) return true;
+      if (numValue !== null) {
+        const total = row.stockQuantity * Number(row.purchasePrice || 0);
+        if (Math.abs(total - numValue) < 0.005) return true;
+      }
+      return false;
+    })
+    .map((row) => row.id);
+
+  return ids.length > 0 ? [{ id: { in: ids } }] : [];
+};
+
+const buildProductWhere = async (query = {}) => {
   const where = {};
   const search = (query.search || query.query || query.q || "").trim();
 
@@ -259,21 +338,8 @@ const buildProductWhere = (query = {}) => {
   if (search) {
     conditions.push({
       OR: [
-        { styleNumber: { contains: search, mode: "insensitive" } },
-        { baseStyleNumber: { contains: search, mode: "insensitive" } },
-        { styleName: { contains: search, mode: "insensitive" } },
-        { itemName: { contains: search, mode: "insensitive" } },
-        { productName: { contains: search, mode: "insensitive" } },
-        { sku: { contains: search, mode: "insensitive" } },
-        { brand: { contains: search, mode: "insensitive" } },
-        { color: { contains: search, mode: "insensitive" } },
-        {
-          barcodes: {
-            some: {
-              barcodeValue: { contains: search, mode: "insensitive" },
-            },
-          },
-        },
+        ...buildProductSearchOr(search),
+        ...(await buildComputedProductConditions(search)),
       ],
     });
   }
@@ -340,7 +406,7 @@ const productListSelect = {
 
 const getProducts = async (query = {}) => {
   const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
-  const where = buildProductWhere(query);
+  const where = await buildProductWhere(query);
 
   if (isAll) {
     const products = await prisma.product.findMany({
@@ -398,7 +464,16 @@ const getBaseStyles = async () => {
 const getLowStockProducts = async (query = {}) => {
   const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
 
+  const search = (query.search || query.query || query.q || "").trim();
+
+  // Every low stock row shows the same "Low Stock" status, so a status term matches all rows.
+  const statusMatchesAll = labelMatches(LOW_STOCK_LABELS, search.toLowerCase());
+
   const products = await prisma.product.findMany({
+    where:
+      search && !statusMatchesAll
+        ? { OR: buildProductSearchOr(search) }
+        : {},
     include: {
       category: true,
       barcodes: true,

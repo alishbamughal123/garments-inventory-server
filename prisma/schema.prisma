@@ -485,6 +485,8 @@ model Sale {
 
   paymentMethod String
 
+  notes String?
+
   createdAt DateTime @default(now())
 
   saleItems SaleItem[]

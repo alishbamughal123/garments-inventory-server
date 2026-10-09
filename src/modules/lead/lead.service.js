@@ -8,6 +8,11 @@ const {
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
 
+const {
+  enumCondition,
+  numberCondition,
+} = require("../../utils/columnSearch.helper");
+
 const createLead =
   async (
     payload,
@@ -44,6 +49,15 @@ const getLeads = async (searchOrQuery = "") => {
         { designation: { contains: search, mode: "insensitive" } },
         { address: { contains: search, mode: "insensitive" } },
         { notes: { contains: search, mode: "insensitive" } },
+        { legalEntity: { contains: search, mode: "insensitive" } },
+        { segment: { contains: search, mode: "insensitive" } },
+        { priority: { contains: search, mode: "insensitive" } },
+        { county: { contains: search, mode: "insensitive" } },
+        { financialYear: { contains: search, mode: "insensitive" } },
+        ...enumCondition("status", "LeadStatus", search),
+        ...enumCondition("source", "LeadSource", search),
+        ...numberCondition("rank", search.replace(/^#/, ""), true),
+        ...numberCondition("revenueMnok", search.replace(/\s*mnok$/i, "")),
       ],
     });
   }

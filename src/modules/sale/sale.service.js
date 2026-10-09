@@ -4,6 +4,7 @@ const {
   getPaginationParams,
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
+const { numberCondition, dateCondition } = require("../../utils/columnSearch.helper");
 
 /*
 |--------------------------------------------------------------------------
@@ -163,17 +164,56 @@ const getSales = async (query = {}) => {
         { invoiceNumber: { contains: search, mode: "insensitive" } },
         { customer: { fullName: { contains: search, mode: "insensitive" } } },
         { customer: { companyName: { contains: search, mode: "insensitive" } } },
+        { customer: { email: { contains: search, mode: "insensitive" } } },
+        { customer: { phoneNumber: { contains: search, mode: "insensitive" } } },
+        { paymentMethod: { contains: search, mode: "insensitive" } },
         {
           saleItems: {
             some: {
-              product: {
-                productName: { contains: search, mode: "insensitive" },
-              },
+              OR: [
+                { product: { productName: { contains: search, mode: "insensitive" } } },
+                { product: { sku: { contains: search, mode: "insensitive" } } },
+                { product: { styleNumber: { contains: search, mode: "insensitive" } } },
+                { product: { color: { contains: search, mode: "insensitive" } } },
+                { product: { size: { contains: search, mode: "insensitive" } } },
+                ...numberCondition("quantity", search, true),
+              ],
             },
           },
         },
+        ...numberCondition("grandTotal", search),
+        ...numberCondition("subtotal", search),
+        ...dateCondition("createdAt", search),
       ];
     }
+
+    // Report filters: a single customer ("WALKIN" = sales without a customer) and a date range
+    if (query.customerId) {
+      where.customerId = query.customerId === "WALKIN" ? null : String(query.customerId);
+    }
+
+    const rangeStart = /^\d{4}-\d{2}-\d{2}$/.test(query.from || "") ? new Date(`${query.from}T00:00:00`) : null;
+    const rangeEnd = /^\d{4}-\d{2}-\d{2}$/.test(query.to || "") ? new Date(`${query.to}T00:00:00`) : null;
+    if (rangeStart || rangeEnd) {
+      where.createdAt = {
+        ...(rangeStart && { gte: rangeStart }),
+        ...(rangeEnd && { lt: new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000) }),
+      };
+    }
+
+    // Totals for everything that matches the filters (not just the current page)
+    const totals = await prisma.sale.aggregate({
+      where,
+      _count: { _all: true },
+      _sum: { subtotal: true, discount: true, tax: true, grandTotal: true },
+    });
+    const summary = {
+      count: totals._count._all,
+      subtotal: totals._sum.subtotal || 0,
+      discount: totals._sum.discount || 0,
+      tax: totals._sum.tax || 0,
+      grandTotal: totals._sum.grandTotal || 0,
+    };
 
     if (isAll) {
       const sales = await prisma.sale.findMany({
@@ -193,11 +233,12 @@ const getSales = async (query = {}) => {
 
       return {
         sales,
-        pagination: formatPaginationMeta(sales.length, 1, sales.length || 1),
+        pagination: { ...formatPaginationMeta(sales.length, 1, sales.length || 1), summary },
       };
     }
 
     const [total, sales] = await Promise.all([
+
       prisma.sale.count({ where }),
       prisma.sale.findMany({
         where,
@@ -219,7 +260,7 @@ const getSales = async (query = {}) => {
 
     return {
       sales,
-      pagination: formatPaginationMeta(total, page, limit),
+      pagination: { ...formatPaginationMeta(total, page, limit), summary },
     };
   } catch (error) {
     console.log("GET SALES ERROR:", error);
@@ -361,8 +402,10 @@ const updateSale = async (id, payload) => {
   return await prisma.sale.update({
     where: { id },
     data: {
-      notes: payload.notes,
-      paymentMethod: payload.paymentMethod,
+      ...(payload.notes !== undefined && {
+        notes: String(payload.notes || "").trim() || null,
+      }),
+      ...(payload.paymentMethod && { paymentMethod: payload.paymentMethod }),
     },
   });
 };

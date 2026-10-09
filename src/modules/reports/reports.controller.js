@@ -82,6 +82,15 @@ const getOpenOrdersReportHandler = async (req, res) => {
   }
 };
 
+const getSalesReportHandler = async (req, res) => {
+  try {
+    const report = await reportsService.getSalesReport(req.query);
+    return successResponse(res, report, "Sales report generated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
 module.exports = {
   getCrmOverviewHandler,
   getInventoryReportHandler,
@@ -91,5 +100,6 @@ module.exports = {
   getProductMovementReportHandler,
   getLowStockReportHandler,
   getCustomerPurchaseReportHandler,
-  getOpenOrdersReportHandler
+  getOpenOrdersReportHandler,
+  getSalesReportHandler,
 };

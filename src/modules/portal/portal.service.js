@@ -5,6 +5,11 @@ const {
   getPaginationParams,
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
+const {
+  enumCondition,
+  numberCondition,
+  dateCondition,
+} = require("../../utils/columnSearch.helper");
 
 const getJwtSecret = () => process.env.JWT_SECRET || "super_secret_jwt_key";
 
@@ -516,7 +521,15 @@ const getPortalCatalog = async (customerId, search = "", categoryId = null) => {
         { styleName: { contains: trimmedSearch, mode: "insensitive" } },
         { itemName: { contains: trimmedSearch, mode: "insensitive" } },
         { color: { contains: trimmedSearch, mode: "insensitive" } },
-        { size: { contains: trimmedSearch, mode: "insensitive" } }
+        { size: { contains: trimmedSearch, mode: "insensitive" } },
+        { brand: { contains: trimmedSearch, mode: "insensitive" } },
+        { fabric: { contains: trimmedSearch, mode: "insensitive" } },
+        { washingInstructions: { contains: trimmedSearch, mode: "insensitive" } },
+        { category: { name: { contains: trimmedSearch, mode: "insensitive" } } },
+        { barcodes: { some: { barcodeValue: { contains: trimmedSearch, mode: "insensitive" } } } },
+        ...numberCondition("salePrice", trimmedSearch),
+        ...numberCondition("weightInKg", trimmedSearch),
+        ...numberCondition("stockQuantity", trimmedSearch, true)
       ]
     } : {})
   };
@@ -531,6 +544,7 @@ const getPortalCatalog = async (customerId, search = "", categoryId = null) => {
       styleNumber: true,
       styleName: true,
       itemName: true,
+      brand: true,
       color: true,
       size: true,
       stockQuantity: true,
@@ -868,6 +882,56 @@ const createPortalOrder = async (userIdOrCustomerId, payload) => {
 
 /*
 |--------------------------------------------------------------------------
+| ORDER SEARCH (matches every column shown on order lists)
+|--------------------------------------------------------------------------
+*/
+const buildOrderSearch = (search, includeCustomer) => {
+  const ci = (value) => ({ contains: value, mode: "insensitive" });
+  return [
+    { orderNumber: ci(search) },
+    { notes: ci(search) },
+    { shippingAddress: ci(search) },
+    ...enumCondition("status", "CustomerOrderStatus", search),
+    ...(includeCustomer
+      ? [
+          { customer: { fullName: ci(search) } },
+          { customer: { companyName: ci(search) } },
+          { customer: { phoneNumber: ci(search) } },
+          { customer: { email: ci(search) } },
+          { customer: { customerCode: ci(search) } },
+        ]
+      : []),
+    {
+      orderItems: {
+        some: {
+          OR: [
+            { product: { productName: ci(search) } },
+            { product: { sku: ci(search) } },
+            { product: { styleNumber: ci(search) } },
+            { product: { color: ci(search) } },
+            { product: { size: ci(search) } },
+            { customNote: ci(search) },
+            { selectedLogo: ci(search) },
+            ...numberCondition("quantity", search, true),
+            ...numberCondition("unitPrice", search),
+            ...numberCondition("totalPrice", search),
+          ],
+        },
+      },
+    },
+    { deliveryNote: { deliveryNoteNumber: ci(search) } },
+    ...numberCondition("totalAmount", search),
+    ...numberCondition("subtotal", search),
+    ...numberCondition("tax", search),
+    ...numberCondition("totalParcelWeight", search),
+    ...numberCondition("garmentWeightKg", search),
+    ...numberCondition("packagingWeightKg", search),
+    ...dateCondition("createdAt", search),
+  ];
+};
+
+/*
+|--------------------------------------------------------------------------
 | GET CUSTOMER PAST ORDERS
 |--------------------------------------------------------------------------
 */
@@ -893,6 +957,10 @@ const getCustomerOrders = async (userIdOrCustomerId, query = {}) => {
 
   const { page, limit, skip, take, isAll } = getPaginationParams(query, 25, 200);
   const where = { customerId: customer.id };
+  const orderSearch = (query.search || query.query || "").trim();
+  if (orderSearch) {
+    where.OR = buildOrderSearch(orderSearch, false);
+  }
 
   if (isAll) {
     const orders = await prisma.customerOrder.findMany({
@@ -954,11 +1022,7 @@ const getAllOrders = async (statusOrQuery = null, customerId = null) => {
   };
 
   if (search) {
-    where.OR = [
-      { orderNumber: { contains: search, mode: "insensitive" } },
-      { customer: { fullName: { contains: search, mode: "insensitive" } } },
-      { customer: { companyName: { contains: search, mode: "insensitive" } } },
-    ];
+    where.OR = buildOrderSearch(search, true);
   }
 
   if (isAll) {

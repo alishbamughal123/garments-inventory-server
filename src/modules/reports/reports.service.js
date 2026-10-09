@@ -125,8 +125,36 @@ const getCrmOverview = async (query = {}) => {
 |--------------------------------------------------------------------------
 */
 
+// Helper: keep only rows where ANY displayed column contains the search term.
+// Also understands DD.MM.YYYY / DD/MM/YYYY by converting them to YYYY-MM-DD.
+const filterReportItems = (items, query = {}) => {
+  const raw = String(query.search || query.query || "").trim().toLowerCase();
+  if (!raw) return items;
+
+  const terms = [raw];
+  const dm = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (dm) {
+    terms.push(`${dm[3]}-${dm[2].padStart(2, "0")}-${dm[1].padStart(2, "0")}`);
+  }
+
+  return items.filter((row) =>
+    Object.values(row).some((value) => {
+      if (value == null) return false;
+      const text =
+        typeof value === "boolean"
+          ? `${value} ${value ? "yes ja" : "no nei"}`
+          : value instanceof Date
+            ? value.toISOString()
+            : String(value);
+      const lowered = text.toLowerCase();
+      return terms.some((term) => lowered.includes(term));
+    })
+  );
+};
+
 // Helper to paginate an array of report items
-const paginateReportItems = (items, query, defaultLimit = 25) => {
+const paginateReportItems = (allItems, query, defaultLimit = 25) => {
+  const items = filterReportItems(allItems, query);
   const { page, limit, skip, take, isAll } = getPaginationParams(query, defaultLimit, 500);
   if (isAll) {
     return {
@@ -143,17 +171,11 @@ const paginateReportItems = (items, query, defaultLimit = 25) => {
 
 // 1. Inventory Report
 const getInventoryReport = async (query = {}) => {
-  const { categoryId, search } = query;
+  const { categoryId } = query;
+  // Search is applied across every displayed column (see filterReportItems below).
   const where = {
     isActive: true,
     ...(categoryId ? { categoryId } : {}),
-    ...(search ? {
-      OR: [
-        { productName: { contains: search, mode: "insensitive" } },
-        { sku: { contains: search, mode: "insensitive" } },
-        { styleNumber: { contains: search, mode: "insensitive" } }
-      ]
-    } : {})
   };
 
   const products = await prisma.product.findMany({
@@ -166,15 +188,11 @@ const getInventoryReport = async (query = {}) => {
   let totalInventoryValue = 0;
   let lowStockCount = 0;
 
-  const items = products.map(p => {
+  const allItems = products.map(p => {
     const stock = p.stockQuantity;
     const purchaseVal = Number(p.purchasePrice) * stock;
     const saleVal = Number(p.salePrice) * stock;
     const isLowStock = stock <= p.minStockAlert;
-
-    totalItems += stock;
-    totalInventoryValue += purchaseVal;
-    if (isLowStock) lowStockCount++;
 
     return {
       id: p.id,
@@ -195,11 +213,18 @@ const getInventoryReport = async (query = {}) => {
     };
   });
 
+  const items = filterReportItems(allItems, query);
+  items.forEach((item) => {
+    totalItems += item.stockQuantity;
+    totalInventoryValue += item.purchasePrice * item.stockQuantity;
+    if (item.isLowStock) lowStockCount++;
+  });
+
   const { items: paginatedItems, pagination } = paginateReportItems(items, query);
 
   return {
     summary: {
-      totalProducts: products.length,
+      totalProducts: items.length,
       totalStockUnits: totalItems,
       totalInventoryCostValue: roundToTwo(totalInventoryValue),
       lowStockAlerts: lowStockCount
@@ -520,6 +545,63 @@ const getOpenOrdersReport = async (query = {}) => {
   };
 };
 
+// 9. Sales Report (one row per sale, optionally for a single customer)
+const getSalesReport = async (query = {}) => {
+  const where = {};
+  const createdAt = buildCreatedAtFilter(query.from, query.to);
+  if (createdAt) where.createdAt = createdAt;
+  if (query.customerId) {
+    where.customerId = query.customerId === "WALKIN" ? null : String(query.customerId);
+  }
+
+  const sales = await prisma.sale.findMany({
+    where,
+    include: {
+      customer: true,
+      saleItems: { include: { product: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const items = sales.map((sale) => {
+    const variantOf = (p) => [p?.color, p?.size].filter(Boolean).join("/");
+    return {
+      invoiceNumber: sale.invoiceNumber,
+      date: sale.createdAt.toISOString().slice(0, 10),
+      customerName: sale.customer?.fullName || "Walk-in Customer",
+      companyName: sale.customer?.companyName || "N/A",
+      products: sale.saleItems
+        .map((it) => {
+          const variant = variantOf(it.product);
+          return `${it.product?.productName || "Product"} x${it.quantity}${variant ? ` (${variant})` : ""}`;
+        })
+        .join("; "),
+      totalItems: sale.saleItems.reduce((sum, it) => sum + it.quantity, 0),
+      paymentMethod: sale.paymentMethod,
+      subtotal: roundToTwo(sale.subtotal),
+      discount: roundToTwo(sale.discount),
+      vat: roundToTwo(sale.tax),
+      grandTotal: roundToTwo(sale.grandTotal),
+    };
+  });
+
+  const filtered = filterReportItems(items, query);
+  const { items: paginatedItems, pagination } = paginateReportItems(items, query);
+
+  return {
+    // Summary covers everything that matches the filters (all pages)
+    summary: {
+      totalSales: filtered.length,
+      totalItemsSold: filtered.reduce((sum, i) => sum + i.totalItems, 0),
+      subtotal: roundToTwo(filtered.reduce((sum, i) => sum + i.subtotal, 0)),
+      totalVat: roundToTwo(filtered.reduce((sum, i) => sum + i.vat, 0)),
+      totalRevenue: roundToTwo(filtered.reduce((sum, i) => sum + i.grandTotal, 0)),
+    },
+    items: paginatedItems,
+    pagination,
+  };
+};
+
 module.exports = {
   getCrmOverview,
   getInventoryReport,
@@ -529,5 +611,6 @@ module.exports = {
   getProductMovementReport,
   getLowStockReport,
   getCustomerPurchaseReport,
-  getOpenOrdersReport
+  getOpenOrdersReport,
+  getSalesReport,
 };

@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../../config/db");
+const { enumCondition } = require("../../utils/columnSearch.helper");
 const generateToken = require("../../utils/generateToken");
 const {
   getPaginationParams,
@@ -94,7 +95,15 @@ const getUsers = async (query = {}) => {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
+      ...enumCondition("role", "UserRole", search),
     ];
+
+    const lowerSearch = search.toLowerCase();
+    if (lowerSearch.length >= 3 && "inactive".startsWith(lowerSearch)) {
+      where.OR.push({ isActive: false });
+    } else if (lowerSearch.length >= 3 && "active".startsWith(lowerSearch)) {
+      where.OR.push({ isActive: true });
+    }
   }
 
   if (query.role) {

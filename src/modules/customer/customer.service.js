@@ -6,6 +6,8 @@ const {
   formatPaginationMeta,
 } = require("../../utils/pagination.helper");
 
+const { enumCondition, numberCondition } = require("../../utils/columnSearch.helper");
+
 const buildCustomerFilters = (search, customerType, status) => {
   const filters = [];
 
@@ -16,7 +18,12 @@ const buildCustomerFilters = (search, customerType, status) => {
         { companyName: { contains: search, mode: "insensitive" } },
         { customerCode: { contains: search, mode: "insensitive" } },
         { phoneNumber: { contains: search } },
-        { email: { contains: search, mode: "insensitive" } }
+        { email: { contains: search, mode: "insensitive" } },
+        { vatNumber: { contains: search, mode: "insensitive" } },
+        { designation: { contains: search, mode: "insensitive" } },
+        ...enumCondition("customerType", "CustomerType", search),
+        ...enumCondition("status", "CustomerStatus", search),
+        ...numberCondition("totalSpent", search.replace(/^nok\s*/i, "")),
       ]
     });
   }

@@ -11,7 +11,8 @@ const {
   getProductMovementReportHandler,
   getLowStockReportHandler,
   getCustomerPurchaseReportHandler,
-  getOpenOrdersReportHandler
+  getOpenOrdersReportHandler,
+  getSalesReportHandler,
 } = require("./reports.controller");
 
 router.get("/overview", authMiddleware, getCrmOverviewHandler);
@@ -23,5 +24,6 @@ router.get("/product-movement", authMiddleware, getProductMovementReportHandler)
 router.get("/low-stock", authMiddleware, getLowStockReportHandler);
 router.get("/customer-purchases", authMiddleware, getCustomerPurchaseReportHandler);
 router.get("/open-orders", authMiddleware, getOpenOrdersReportHandler);
+router.get("/sales", authMiddleware, getSalesReportHandler);
 
 module.exports = router;

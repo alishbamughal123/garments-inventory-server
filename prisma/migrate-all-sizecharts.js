@@ -30,7 +30,7 @@ const SIZE_CHART_20110 = {
   measurements: [
     {
       code: "CHEST",
-      name: "Oberweite (Chest)",
+      name: "Chest",
       norwegianName: "Brystvidde",
       tolerance: "± 2",
       values: {
@@ -40,7 +40,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "HALF_CHEST",
-      name: "½ Oberweite (½ Chest)",
+      name: "½ Chest",
       norwegianName: "½ Brystvidde",
       tolerance: "± 1",
       values: {
@@ -50,7 +50,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "WAIST",
-      name: "Taillenweite (Waist)",
+      name: "Waist",
       norwegianName: "Midjevidde",
       tolerance: "± 2",
       values: {
@@ -60,7 +60,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "HALF_WAIST",
-      name: "½ Taillenweite (½ Waist)",
+      name: "½ Waist",
       norwegianName: "½ Midjevidde",
       tolerance: "± 1",
       values: {
@@ -70,7 +70,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "SLEEVE",
-      name: "Armlänge incl. Manschette (Sleeve length with cuff)",
+      name: "Sleeve length with cuff",
       norwegianName: "Ermelengde inkl. mansjett",
       tolerance: "± 1",
       values: {
@@ -80,7 +80,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "BACK_WIDTH",
-      name: "Rückenbreite (Back width)",
+      name: "Back width",
       norwegianName: "Ryggbredde",
       tolerance: "± 1",
       values: {
@@ -90,7 +90,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "HALF_BACK_WIDTH",
-      name: "½ Rückenbreite (½ Back width)",
+      name: "½ Back width",
       norwegianName: "½ Ryggbredde",
       tolerance: "± 0.5",
       values: {
@@ -100,7 +100,7 @@ const SIZE_CHART_20110 = {
     },
     {
       code: "BACK_LENGTH",
-      name: "Rückenlänge (Center back length)",
+      name: "Center back length",
       norwegianName: "Rygglengde midt bak",
       tolerance: "± 1",
       values: {
@@ -128,15 +128,15 @@ const SIZE_CHART_20111 = {
     { key: "3XL", label: "3XL (54-56)", colorBadge: "brown", colorHex: "#78350f", textHex: "#ffffff" }
   ],
   measurements: [
-    { code: "CHEST", name: "Oberweite (Chest)", norwegianName: "Brystvidde", tolerance: "± 2", values: { XS: "92", S: "100", M: "108", L: "116", XL: "126", "2XL": "138", "3XL": "150" } },
-    { code: "HALF_CHEST", name: "½ Oberweite (½ Chest)", norwegianName: "½ Brystvidde", tolerance: "± 1", values: { XS: "46", S: "50", M: "54", L: "58", XL: "63", "2XL": "69", "3XL": "75" } },
-    { code: "WAIST", name: "Taillenweite (Waist)", norwegianName: "Midjevidde", tolerance: "± 2", values: { XS: "79", S: "87", M: "95", L: "103", XL: "113", "2XL": "125", "3XL": "137" } },
-    { code: "HALF_WAIST", name: "½ Taillenweite (½ Waist)", norwegianName: "½ Midjevidde", tolerance: "± 1", values: { XS: "39.5", S: "43.5", M: "47.5", L: "51.5", XL: "56.5", "2XL": "62.5", "3XL": "68.5" } },
-    { code: "SLEEVE_NO_CUFF", name: "Armlänge bis Umschlag (Sleeve length without cuff)", norwegianName: "Ermelengde uten mansjett", tolerance: "± 1", values: { XS: "55", S: "55", M: "56", L: "56.5", XL: "57", "2XL": "57.5", "3XL": "58" } },
-    { code: "SLEEVE_WITH_CUFF", name: "Armlänge incl. Manschette (Sleeve length with cuff)", norwegianName: "Ermelengde inkl. mansjett", tolerance: "± 1", values: { XS: "65.5", S: "65.5", M: "66.5", L: "67", XL: "67.5", "2XL": "68", "3XL": "68.5" } },
-    { code: "BACK_WIDTH", name: "Rückenbreite (Back width)", norwegianName: "Ryggbredde", tolerance: "± 1", values: { XS: "36", S: "38", M: "40", L: "42", XL: "44", "2XL": "47", "3XL": "50" } },
-    { code: "HALF_BACK_WIDTH", name: "½ Rückenbreite (½ Back width)", norwegianName: "½ Ryggbredde", tolerance: "± 0.5", values: { XS: "18", S: "19", M: "20", L: "21", XL: "22", "2XL": "23.5", "3XL": "25" } },
-    { code: "BACK_LENGTH", name: "Rückenlänge (Center back length)", norwegianName: "Rygglengde midt bak", tolerance: "± 1", values: { XS: "67", S: "69", M: "71", L: "73", XL: "75", "2XL": "75", "3XL": "75" } }
+    { code: "CHEST", name: "Chest", norwegianName: "Brystvidde", tolerance: "± 2", values: { XS: "92", S: "100", M: "108", L: "116", XL: "126", "2XL": "138", "3XL": "150" } },
+    { code: "HALF_CHEST", name: "½ Chest", norwegianName: "½ Brystvidde", tolerance: "± 1", values: { XS: "46", S: "50", M: "54", L: "58", XL: "63", "2XL": "69", "3XL": "75" } },
+    { code: "WAIST", name: "Waist", norwegianName: "Midjevidde", tolerance: "± 2", values: { XS: "79", S: "87", M: "95", L: "103", XL: "113", "2XL": "125", "3XL": "137" } },
+    { code: "HALF_WAIST", name: "½ Waist", norwegianName: "½ Midjevidde", tolerance: "± 1", values: { XS: "39.5", S: "43.5", M: "47.5", L: "51.5", XL: "56.5", "2XL": "62.5", "3XL": "68.5" } },
+    { code: "SLEEVE_NO_CUFF", name: "Sleeve length without cuff", norwegianName: "Ermelengde uten mansjett", tolerance: "± 1", values: { XS: "55", S: "55", M: "56", L: "56.5", XL: "57", "2XL": "57.5", "3XL": "58" } },
+    { code: "SLEEVE_WITH_CUFF", name: "Sleeve length with cuff", norwegianName: "Ermelengde inkl. mansjett", tolerance: "± 1", values: { XS: "65.5", S: "65.5", M: "66.5", L: "67", XL: "67.5", "2XL": "68", "3XL": "68.5" } },
+    { code: "BACK_WIDTH", name: "Back width", norwegianName: "Ryggbredde", tolerance: "± 1", values: { XS: "36", S: "38", M: "40", L: "42", XL: "44", "2XL": "47", "3XL": "50" } },
+    { code: "HALF_BACK_WIDTH", name: "½ Back width", norwegianName: "½ Ryggbredde", tolerance: "± 0.5", values: { XS: "18", S: "19", M: "20", L: "21", XL: "22", "2XL": "23.5", "3XL": "25" } },
+    { code: "BACK_LENGTH", name: "Center back length", norwegianName: "Rygglengde midt bak", tolerance: "± 1", values: { XS: "67", S: "69", M: "71", L: "73", XL: "75", "2XL": "75", "3XL": "75" } }
   ]
 };
 
@@ -166,7 +166,7 @@ const SIZE_CHART_200120 = {
   measurements: [
     {
       code: "WAISTBAND",
-      name: "Bundweite (Waistband width)",
+      name: "Waistband width",
       norwegianName: "Linningvidde",
       tolerance: "± 2",
       values: {
@@ -177,7 +177,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "HALF_WAISTBAND",
-      name: "½ Bundweite (½ Waistband width)",
+      name: "½ Waistband width",
       norwegianName: "½ Linningvidde",
       tolerance: "± 1",
       values: {
@@ -188,7 +188,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "HIP",
-      name: "Hüftweite (Hip)",
+      name: "Hip",
       norwegianName: "Hoftevidde",
       tolerance: "± 2",
       values: {
@@ -199,7 +199,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "HALF_HIP",
-      name: "½ Hüftweite (½ Hip)",
+      name: "½ Hip",
       norwegianName: "½ Hoftevidde",
       tolerance: "± 1",
       values: {
@@ -210,7 +210,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "HEM",
-      name: "Fußweite (Hem width)",
+      name: "Hem width",
       norwegianName: "Fotvidde",
       tolerance: "± 1",
       values: {
@@ -221,7 +221,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "SIDESEAM",
-      name: "Seitenlänge mit Bund (Sideseam w/ waistband)",
+      name: "Sideseam w/ waistband",
       norwegianName: "Sidelengde med linning",
       tolerance: "± 1",
       values: {
@@ -232,7 +232,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "INSEAM",
-      name: "Schrittlänge (Inseam length)",
+      name: "Inseam length",
       norwegianName: "Innside benlengde",
       tolerance: "± 1",
       values: {
@@ -243,7 +243,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "ZIPPER",
-      name: "Reißverschlusslänge (Zipper length)",
+      name: "Zipper length",
       norwegianName: "Glidelåslengde",
       tolerance: "± 0.5",
       values: {
@@ -254,7 +254,7 @@ const SIZE_CHART_200120 = {
     },
     {
       code: "RUBBER",
-      name: "geschnittene Gummilänge (Cut rubber length)",
+      name: "Cut rubber length",
       norwegianName: "Strikklengde",
       tolerance: "± 1",
       values: {
@@ -292,7 +292,7 @@ const SIZE_CHART_200123 = {
   measurements: [
     {
       code: "WAISTBAND",
-      name: "Bundweite (Waistband width)",
+      name: "Waistband width",
       norwegianName: "Linningvidde",
       tolerance: "± 2",
       values: {
@@ -303,7 +303,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "HALF_WAISTBAND",
-      name: "½ Bundweite (½ Waistband width)",
+      name: "½ Waistband width",
       norwegianName: "½ Linningvidde",
       tolerance: "± 1",
       values: {
@@ -314,7 +314,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "HIP",
-      name: "Hüftweite (Hip)",
+      name: "Hip",
       norwegianName: "Hoftevidde",
       tolerance: "± 2",
       values: {
@@ -325,7 +325,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "HALF_HIP",
-      name: "½ Hüftweite (½ Hip)",
+      name: "½ Hip",
       norwegianName: "½ Hoftevidde",
       tolerance: "± 1",
       values: {
@@ -336,7 +336,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "HEM",
-      name: "Fußweite (Hem width)",
+      name: "Hem width",
       norwegianName: "Fotvidde",
       tolerance: "± 1",
       values: {
@@ -347,7 +347,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "SIDESEAM",
-      name: "Seitenlänge mit Bund (Sideseam w/ waistband)",
+      name: "Sideseam w/ waistband",
       norwegianName: "Sidelengde med linning",
       tolerance: "± 1",
       values: {
@@ -358,7 +358,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "INSEAM",
-      name: "Schrittlänge (Inseam length)",
+      name: "Inseam length",
       norwegianName: "Innside benlengde",
       tolerance: "± 1",
       values: {
@@ -369,7 +369,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "ZIPPER",
-      name: "Reißverschlusslänge (Zipper length)",
+      name: "Zipper length",
       norwegianName: "Glidelåslengde",
       tolerance: "± 0.5",
       values: {
@@ -380,7 +380,7 @@ const SIZE_CHART_200123 = {
     },
     {
       code: "RUBBER",
-      name: "geschnittene Gummilänge (Cut rubber length)",
+      name: "Cut rubber length",
       norwegianName: "Strikklengde",
       tolerance: "± 1",
       values: {
@@ -420,7 +420,7 @@ const SIZE_CHART_200126 = {
   measurements: [
     {
       code: "WAISTBAND",
-      name: "Bundweite (Waistband width)",
+      name: "Waistband width",
       norwegianName: "Linningvidde",
       tolerance: "± 2",
       values: {
@@ -432,7 +432,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "HALF_WAISTBAND",
-      name: "½ Bundweite (½ Waistband width)",
+      name: "½ Waistband width",
       norwegianName: "½ Linningvidde",
       tolerance: "± 1",
       values: {
@@ -444,7 +444,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "HIP",
-      name: "Hüftweite (Hip)",
+      name: "Hip",
       norwegianName: "Hoftevidde",
       tolerance: "± 2",
       values: {
@@ -456,7 +456,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "HALF_HIP",
-      name: "½ Hüftweite (½ Hip)",
+      name: "½ Hip",
       norwegianName: "½ Hoftevidde",
       tolerance: "± 1",
       values: {
@@ -468,7 +468,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "HEM",
-      name: "Fußweite (Hem width)",
+      name: "Hem width",
       norwegianName: "Fotvidde",
       tolerance: "± 1",
       values: {
@@ -480,7 +480,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "SIDESEAM",
-      name: "Seitenlänge mit Bund (Sideseam w/ waistband)",
+      name: "Sideseam w/ waistband",
       norwegianName: "Sidelengde med linning",
       tolerance: "± 1",
       values: {
@@ -492,7 +492,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "INSEAM",
-      name: "Schrittlänge (Inseam length)",
+      name: "Inseam length",
       norwegianName: "Innside benlengde",
       tolerance: "± 1",
       values: {
@@ -504,7 +504,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "ZIPPER",
-      name: "RV-Schlitz-Öffnung (Zipper opening)",
+      name: "Zipper opening",
       norwegianName: "Glidelåsåpning",
       tolerance: "± 0.5",
       values: {
@@ -516,7 +516,7 @@ const SIZE_CHART_200126 = {
     },
     {
       code: "THIGH",
-      name: "Oberschenkelweite (Thigh width)",
+      name: "Thigh width",
       norwegianName: "Lårvidde",
       tolerance: "± 2",
       values: {
@@ -547,13 +547,13 @@ const SIZE_CHART_200127 = {
     { key: "4XL", label: "4XL (68-70)", colorBadge: "orange", colorHex: "#ea580c", textHex: "#ffffff" }
   ],
   measurements: [
-    { code: "WAISTBAND", name: "Bundweite (Waistband)", norwegianName: "Linningvidde", tolerance: "± 2", values: { XS: "64", S: "72", M: "80", L: "88", XL: "100", "2XL": "112", "3XL": "124", "4XL": "136" } },
-    { code: "HIP", name: "Hüftweite (Hip)", norwegianName: "Hoftevidde", tolerance: "± 2", values: { XS: "94", S: "102", M: "110", L: "118", XL: "128", "2XL": "138", "3XL": "148", "4XL": "158" } },
-    { code: "SIDESEAM", name: "SL mit Bund (Sideseam with waistband)", norwegianName: "Sidelengde med linning", tolerance: "± 1", values: { XS: "99", S: "104", M: "109", L: "114", XL: "118", "2XL": "121", "3XL": "124", "4XL": "127" } },
-    { code: "INSEAM", name: "Schrittlänge (Inside seam)", norwegianName: "Innside benlengde", tolerance: "± 1", values: { XS: "75", S: "79", M: "83", L: "87", XL: "89", "2XL": "90", "3XL": "91", "4XL": "92" } },
-    { code: "HEM", name: "Fußweite (Hem)", norwegianName: "Fotvidde", tolerance: "± 1", values: { XS: "42", S: "43", M: "44", L: "45", XL: "46", "2XL": "47", "3XL": "48", "4XL": "49" } },
-    { code: "RUBBER", name: "Gummi cm (Rubber length)", norwegianName: "Strikklengde", tolerance: "± 1", values: { XS: "64", S: "72", M: "80", L: "88", XL: "100", "2XL": "112", "3XL": "124", "4XL": "136" } },
-    { code: "RIBBON", name: "Kordel cm (Ribbon length)", norwegianName: "Snørebåndlengde", tolerance: "± 2", values: { XS: "120", S: "130", M: "140", L: "150", XL: "160", "2XL": "170", "3XL": "180", "4XL": "190" } }
+    { code: "WAISTBAND", name: "Waistband", norwegianName: "Linningvidde", tolerance: "± 2", values: { XS: "64", S: "72", M: "80", L: "88", XL: "100", "2XL": "112", "3XL": "124", "4XL": "136" } },
+    { code: "HIP", name: "Hip", norwegianName: "Hoftevidde", tolerance: "± 2", values: { XS: "94", S: "102", M: "110", L: "118", XL: "128", "2XL": "138", "3XL": "148", "4XL": "158" } },
+    { code: "SIDESEAM", name: "Sideseam with waistband", norwegianName: "Sidelengde med linning", tolerance: "± 1", values: { XS: "99", S: "104", M: "109", L: "114", XL: "118", "2XL": "121", "3XL": "124", "4XL": "127" } },
+    { code: "INSEAM", name: "Inside seam", norwegianName: "Innside benlengde", tolerance: "± 1", values: { XS: "75", S: "79", M: "83", L: "87", XL: "89", "2XL": "90", "3XL": "91", "4XL": "92" } },
+    { code: "HEM", name: "Hem", norwegianName: "Fotvidde", tolerance: "± 1", values: { XS: "42", S: "43", M: "44", L: "45", XL: "46", "2XL": "47", "3XL": "48", "4XL": "49" } },
+    { code: "RUBBER", name: "Rubber length", norwegianName: "Strikklengde", tolerance: "± 1", values: { XS: "64", S: "72", M: "80", L: "88", XL: "100", "2XL": "112", "3XL": "124", "4XL": "136" } },
+    { code: "RIBBON", name: "Ribbon length", norwegianName: "Snørebåndlengde", tolerance: "± 2", values: { XS: "120", S: "130", M: "140", L: "150", XL: "160", "2XL": "170", "3XL": "180", "4XL": "190" } }
   ]
 };
 

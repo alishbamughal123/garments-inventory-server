@@ -31,8 +31,8 @@ const SIZE_CHART_10109 = {
   measurements: [
     {
       code: "1",
-      name: "Chest Circumference (Brustumfang)",
-      norwegianName: "Brystomkrets (Brustumfang)",
+      name: "Chest Circumference",
+      norwegianName: "Brystomkrets",
       tolerance: "± 2",
       values: {
         "40/42": "106", "44/46": "114", "48/50": "122", "52/54": "130", "56/58": "138", "60/62": "146", "64/66": "154", "68/70": "162", "72/74": "170",
@@ -41,8 +41,8 @@ const SIZE_CHART_10109 = {
     },
     {
       code: "4",
-      name: "Sleeve Length (Ärmellänge)",
-      norwegianName: "Ermelengde (Ärmellänge)",
+      name: "Sleeve Length",
+      norwegianName: "Ermelengde",
       tolerance: "± 1",
       values: {
         "40/42": "58", "44/46": "63", "48/50": "65", "52/54": "66", "56/58": "67", "60/62": "68", "64/66": "69", "68/70": "70", "72/74": "70",
@@ -51,8 +51,8 @@ const SIZE_CHART_10109 = {
     },
     {
       code: "5",
-      name: "Back Length (Rückenlänge)",
-      norwegianName: "Rygglengde (Rückenlänge)",
+      name: "Back Length",
+      norwegianName: "Rygglengde",
       tolerance: "± 1",
       values: {
         "40/42": "92", "44/46": "94", "48/50": "96", "52/54": "98", "56/58": "102", "60/62": "104", "64/66": "105", "68/70": "106", "72/74": "107",
@@ -61,8 +61,8 @@ const SIZE_CHART_10109 = {
     },
     {
       code: "7",
-      name: "Hem / Bottom Width (Saumbreite)",
-      norwegianName: "Bunnvidde / Faldvidde (Saumbreite)",
+      name: "Hem / Bottom Width",
+      norwegianName: "Bunnvidde / Faldvidde",
       tolerance: "± 2",
       values: {
         "40/42": "110", "44/46": "118", "48/50": "126", "52/54": "136", "56/58": "146", "60/62": "156", "64/66": "166", "68/70": "176", "72/74": "186",
