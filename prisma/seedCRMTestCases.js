@@ -1,8 +1,13 @@
 const prisma = require("../src/config/db");
 
-const TEST_EMAIL = "alishbaramzanmughal@gmail.com";
+// Never hardcode a personal email here - pass it explicitly: SEED_TEST_EMAIL=you@example.com node prisma/seedCRMTestCases.js
+const TEST_EMAIL = process.env.SEED_TEST_EMAIL;
 
 async function seedCRM() {
+  if (!TEST_EMAIL) {
+    console.error("Set SEED_TEST_EMAIL to a test mailbox before running this seed script.");
+    return;
+  }
   console.log(`🚀 Starting CRM Test Data Seeding for ${TEST_EMAIL}...`);
 
   // 1. Get Admin User

@@ -238,6 +238,10 @@ const updateCustomer = async (id, payload) => {
   const { contacts, password, ...customerData } = payload;
 
   const dataToUpdate = { ...customerData };
+  // email is unique & optional: store a cleared email as NULL, never ""
+  if ("email" in dataToUpdate && !dataToUpdate.email) {
+    dataToUpdate.email = null;
+  }
   if (password) {
     dataToUpdate.passwordHash = await bcrypt.hash(password, 10);
     dataToUpdate.isPortalActive = true;

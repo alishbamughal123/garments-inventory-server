@@ -52,8 +52,13 @@ const createCustomerSchema = z.object({
 |--------------------------------------------------------------------------
 */
 
+// On edit the email may be cleared ("" / null) - it is stored as NULL
 const updateCustomerSchema =
-  createCustomerSchema.partial();
+  createCustomerSchema.partial().extend({
+    email: z
+      .union([z.string().email(), z.literal(""), z.null()])
+      .optional(),
+  });
 
 const customerInteractionSchema =
   z.object({

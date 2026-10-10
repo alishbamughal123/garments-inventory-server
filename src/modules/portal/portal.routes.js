@@ -15,6 +15,7 @@ router.get("/customers", authMiddleware, portalController.getPortalCustomers);
 router.get("/catalog", authMiddleware, portalController.getCatalog);
 router.post("/orders/place", authMiddleware, portalController.placeOrder);
 router.get("/orders/my", authMiddleware, portalController.getMyOrders);
+router.put("/orders/:id", authMiddleware, portalController.updateB2BOrder);
 
 // Internal CRM Admin/Staff order management routes
 router.get("/admin/orders", authMiddleware, portalController.getAllB2BOrders);

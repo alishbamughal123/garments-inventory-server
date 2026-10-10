@@ -13,6 +13,19 @@ const {
 
 const getJwtSecret = () => process.env.JWT_SECRET || "super_secret_jwt_key";
 
+// Customer fields safe to return to the customer themselves (receipts) - never the password hash
+const PORTAL_CUSTOMER_SELECT = {
+  id: true,
+  customerCode: true,
+  fullName: true,
+  companyName: true,
+  email: true,
+  phoneNumber: true,
+  address: true,
+  city: true,
+  vatNumber: true,
+};
+
 /*
 |--------------------------------------------------------------------------
 | COLLISION-SAFE UNIQUE CODE GENERATORS
@@ -946,6 +959,7 @@ const getCustomerOrders = async (userIdOrCustomerId, query = {}) => {
     const orders = await prisma.customerOrder.findMany({
       where,
       include: {
+        customer: { select: PORTAL_CUSTOMER_SELECT },
         orderItems: {
           include: { product: true }
         },
@@ -965,6 +979,7 @@ const getCustomerOrders = async (userIdOrCustomerId, query = {}) => {
     prisma.customerOrder.findMany({
       where,
       include: {
+        customer: { select: PORTAL_CUSTOMER_SELECT },
         orderItems: {
           include: { product: true }
         },
@@ -1282,7 +1297,236 @@ const updateOrderStatus = async (orderId, status, userId) => {
   return updatedOrder;
 };
 
+/*
+|--------------------------------------------------------------------------
+| EDIT A PLACED / CONFIRMED B2B ORDER
+| - Customer: only own order, only while it is not yet fulfilled/shipped
+| - Staff:    any non-cancelled order; if stock was already deducted
+|             (delivery note exists) the quantity difference is applied to stock
+|--------------------------------------------------------------------------
+*/
+const STAFF_ROLES = ["ADMIN", "MANAGER", "STAFF"];
+const CUSTOMER_EDITABLE_STATUSES = ["PENDING", "APPROVED", "PROCESSING"];
+
+const updateOrder = async (orderId, payload, actor) => {
+  const { items, shippingAddress, notes } = payload || {};
+  const isStaff = STAFF_ROLES.includes(actor?.role);
+
+  const order = await prisma.customerOrder.findUnique({
+    where: { id: orderId },
+    include: { customer: true, orderItems: true, deliveryNote: true },
+  });
+
+  if (!order) {
+    throw new Error("B2B Customer Order not found");
+  }
+
+  if (!isStaff) {
+    let ownerId = null;
+    const direct = await prisma.customer.findUnique({ where: { id: actor.id } });
+    if (direct) {
+      ownerId = direct.id;
+    } else {
+      const user = await prisma.user.findUnique({ where: { id: actor.id } });
+      if (user) {
+        const match = await prisma.customer.findFirst({
+          where: { email: { equals: user.email, mode: "insensitive" } },
+        });
+        ownerId = match?.id || null;
+      }
+    }
+
+    if (!ownerId || ownerId !== order.customerId) {
+      throw new Error("Order not found");
+    }
+
+    if (!CUSTOMER_EDITABLE_STATUSES.includes(order.status) || order.deliveryNote) {
+      throw new Error(
+        "This order is already shipped/completed and cannot be edited. Please contact support."
+      );
+    }
+  }
+
+  if (order.status === "CANCELLED") {
+    throw new Error("A cancelled order cannot be edited.");
+  }
+
+  const stockAlreadyDeducted = !!order.deliveryNote;
+  const data = {};
+
+  if (shippingAddress !== undefined) {
+    data.shippingAddress = String(shippingAddress || "").trim();
+  }
+  if (notes !== undefined) {
+    data.notes = String(notes || "").trim() || null;
+  }
+
+  const changes = [];
+  if (data.shippingAddress !== undefined && data.shippingAddress !== (order.shippingAddress || "")) {
+    changes.push("shipping address");
+  }
+  if (data.notes !== undefined && data.notes !== (order.notes || null)) {
+    changes.push("notes");
+  }
+
+  // Merge duplicate lines & validate
+  let requested = null;
+  if (items !== undefined) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("Order must contain at least one item.");
+    }
+    requested = new Map();
+    for (const raw of items) {
+      const quantity = parseInt(raw.quantity, 10);
+      if (!raw.productId || !Number.isFinite(quantity) || quantity < 1) {
+        throw new Error("Invalid item quantity.");
+      }
+      const existing = requested.get(raw.productId);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        requested.set(raw.productId, {
+          productId: raw.productId,
+          quantity,
+          selectedLogo: raw.selectedLogo || null,
+          customNote: raw.customNote || null,
+        });
+      }
+    }
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    if (requested) {
+      const oldByProduct = new Map(order.orderItems.map((it) => [it.productId, it]));
+
+      const customPrices = await tx.customerPrice.findMany({ where: { customerId: order.customerId } });
+      const customPriceMap = new Map(customPrices.map((cp) => [cp.productId, Number(cp.customPrice)]));
+
+      const products = await tx.product.findMany({
+        where: { id: { in: Array.from(new Set([...oldByProduct.keys(), ...requested.keys()])) } },
+      });
+      const productMap = new Map(products.map((p) => [p.id, p]));
+
+      // Stock reconciliation only when stock was already taken out for this order
+      if (stockAlreadyDeducted) {
+        for (const productId of productMap.keys()) {
+          const before = oldByProduct.get(productId)?.quantity || 0;
+          const after = requested.get(productId)?.quantity || 0;
+          const delta = after - before;
+          if (delta === 0) continue;
+
+          const product = productMap.get(productId);
+          const previousStock = product.stockQuantity;
+          const newStock = previousStock - delta;
+
+          if (newStock < 0) {
+            throw new Error(
+              `Insufficient stock for ${product.productName}. Extra needed: ${delta}, Available: ${previousStock}`
+            );
+          }
+
+          await tx.product.update({ where: { id: productId }, data: { stockQuantity: newStock } });
+          await tx.inventoryTransaction.create({
+            data: {
+              transactionType: delta > 0 ? "STOCK_OUT" : "ADJUSTMENT",
+              quantity: Math.abs(delta),
+              previousStock,
+              newStock,
+              referenceNumber: order.orderNumber,
+              notes: `Order ${order.orderNumber} edited: quantity ${before} -> ${after}`,
+              productId,
+              performedById: actor.id,
+              customerId: order.customerId,
+            },
+          });
+        }
+      }
+
+      let subtotal = 0;
+      const newLines = Array.from(requested.values()).map((line) => {
+        const product = productMap.get(line.productId);
+        if (!product) {
+          throw new Error(`Product with ID "${line.productId}" not found in catalogue.`);
+        }
+        const previous = oldByProduct.get(line.productId);
+        // Keep the agreed price for lines already on the order, price new lines at current customer price
+        const unitPrice = previous
+          ? Number(previous.unitPrice)
+          : customPriceMap.has(product.id)
+          ? customPriceMap.get(product.id)
+          : Number(product.salePrice);
+        const totalPrice = Number((unitPrice * line.quantity).toFixed(2));
+        subtotal += totalPrice;
+        return {
+          orderId: order.id,
+          productId: product.id,
+          quantity: line.quantity,
+          unitPrice,
+          totalPrice,
+          selectedLogo: line.selectedLogo ?? previous?.selectedLogo ?? null,
+          customNote: line.customNote ?? previous?.customNote ?? null,
+        };
+      });
+
+      const subtotalRounded = Number(subtotal.toFixed(2));
+      const tax = Number((subtotalRounded * 0.25).toFixed(2));
+      const grandTotal = Number((subtotalRounded + tax).toFixed(2));
+
+      await tx.customerOrderItem.deleteMany({ where: { orderId: order.id } });
+      await tx.customerOrderItem.createMany({ data: newLines });
+
+      data.subtotal = subtotalRounded;
+      data.tax = tax;
+      data.totalAmount = grandTotal;
+
+      const oldTotal = Number(order.totalAmount || 0);
+      if (grandTotal !== oldTotal) {
+        await tx.customer.update({
+          where: { id: order.customerId },
+          data: {
+            totalSpent: Math.max(0, (order.customer?.totalSpent || 0) - oldTotal + grandTotal),
+          },
+        });
+      }
+
+      changes.push(`items (total ${oldTotal.toFixed(2)} -> ${grandTotal.toFixed(2)} NOK)`);
+    }
+
+    const updated = await tx.customerOrder.update({
+      where: { id: order.id },
+      data,
+      include: {
+        customer: { select: PORTAL_CUSTOMER_SELECT },
+        orderItems: { include: { product: true } },
+        deliveryNote: true,
+        fulfilledBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (changes.length > 0) {
+      try {
+        await tx.auditLog.create({
+          data: {
+            action: "B2B_ORDER_EDITED",
+            entity: "CustomerOrder",
+            entityId: order.id,
+            performedBy: actor.name || actor.id,
+            details: `Edited B2B Order ${order.orderNumber}: ${changes.join(", ")}`,
+          },
+        });
+      } catch (auditErr) {
+        console.warn("Audit log creation skipped:", auditErr.message);
+      }
+    }
+
+    return updated;
+  });
+
+  return result;
+};
+
 module.exports = {
+  updateOrder,
   generateUniqueCustomerCode,
   generateUniqueOrderNumber,
   generateUniqueDeliveryNoteNumber,

@@ -386,17 +386,199 @@ const deleteSale = async (id, userId) => {
 
 /*
 |--------------------------------------------------------------------------
+| UPDATE CONFIRMED SALE (ITEMS / QUANTITIES / DISCOUNT / TAX)
+| Stock is deducted when a sale is confirmed, so only the per-product
+| difference is applied back to stock, with an audit trail entry for each.
+|--------------------------------------------------------------------------
+*/
+
+const updateSaleWithItems = async (id, payload, userId) => {
+  const rawItems = payload.items;
+
+  if (rawItems.length === 0) {
+    throw new Error("A sale must contain at least one item. Delete the sale instead.");
+  }
+
+  // Merge duplicate products & validate input
+  const requested = new Map();
+  for (const raw of rawItems) {
+    const quantity = parseInt(raw.quantity, 10);
+    const unitPrice = Number(raw.unitPrice);
+
+    if (!raw.productId || !Number.isFinite(quantity) || quantity < 1) {
+      throw new Error("Invalid item quantity");
+    }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw new Error("Invalid item price");
+    }
+
+    const existing = requested.get(raw.productId);
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      requested.set(raw.productId, { productId: raw.productId, quantity, unitPrice });
+    }
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: { id },
+      include: { saleItems: true, customer: true },
+    });
+
+    if (!sale) {
+      throw new Error("Sale not found");
+    }
+
+    let effectiveUserId = userId;
+    if (!effectiveUserId) {
+      const defaultUser = await tx.user.findFirst();
+      effectiveUserId = defaultUser?.id;
+    }
+    if (!effectiveUserId) {
+      throw new Error("No active user found to perform sale update");
+    }
+
+    const oldQty = new Map();
+    for (const it of sale.saleItems) {
+      oldQty.set(it.productId, (oldQty.get(it.productId) || 0) + it.quantity);
+    }
+
+    const productIds = new Set([...oldQty.keys(), ...requested.keys()]);
+
+    // Apply stock difference per product
+    for (const productId of productIds) {
+      const before = oldQty.get(productId) || 0;
+      const after = requested.get(productId)?.quantity || 0;
+      const delta = after - before; // > 0 : customer wants more, < 0 : returned to stock
+
+      if (delta === 0) continue;
+
+      const product = await tx.product.findUnique({ where: { id: productId } });
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      const prevStock = product.stockQuantity;
+      const newStock = prevStock - delta;
+
+      if (newStock < 0) {
+        throw new Error(
+          `${product.productName} is out of stock (available: ${prevStock}, extra needed: ${delta})`
+        );
+      }
+
+      await tx.product.update({
+        where: { id: productId },
+        data: { stockQuantity: newStock },
+      });
+
+      await tx.inventoryTransaction.create({
+        data: {
+          transactionType: delta > 0 ? "STOCK_OUT" : "ADJUSTMENT",
+          quantity: Math.abs(delta),
+          previousStock: prevStock,
+          newStock,
+          referenceNumber: sale.invoiceNumber,
+          notes: `Sale ${sale.invoiceNumber} edited: quantity ${before} -> ${after}`,
+          productId,
+          performedById: effectiveUserId,
+          customerId: sale.customerId,
+        },
+      });
+    }
+
+    // Replace sale lines & recompute totals on the server
+    await tx.saleItem.deleteMany({ where: { saleId: id } });
+
+    let subtotal = 0;
+    for (const item of requested.values()) {
+      const total = Number((item.quantity * item.unitPrice).toFixed(2));
+      subtotal += total;
+      await tx.saleItem.create({
+        data: {
+          saleId: id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.unitPrice,
+          total,
+        },
+      });
+    }
+    subtotal = Number(subtotal.toFixed(2));
+
+    const discount =
+      payload.discount !== undefined ? Math.max(0, Number(payload.discount) || 0) : sale.discount;
+    const tax =
+      payload.tax !== undefined
+        ? Math.max(0, Number(payload.tax) || 0)
+        : Number((Math.max(0, subtotal - discount) * 0.25).toFixed(2));
+    const grandTotal = Number(Math.max(0, subtotal - discount + tax).toFixed(2));
+
+    const updated = await tx.sale.update({
+      where: { id },
+      data: {
+        subtotal,
+        discount,
+        tax,
+        grandTotal,
+        ...(payload.notes !== undefined && {
+          notes: String(payload.notes || "").trim() || null,
+        }),
+        ...(payload.paymentMethod && { paymentMethod: payload.paymentMethod }),
+      },
+      include: {
+        customer: true,
+        saleItems: { include: { product: true } },
+      },
+    });
+
+    // Keep customer lifetime spend in sync with the new total
+    if (sale.customerId && sale.customer) {
+      await tx.customer.update({
+        where: { id: sale.customerId },
+        data: {
+          totalSpent: Math.max(0, sale.customer.totalSpent - sale.grandTotal + grandTotal),
+        },
+      });
+    }
+
+    try {
+      await tx.auditLog.create({
+        data: {
+          action: "SALE_EDITED",
+          entity: "Sale",
+          entityId: id,
+          performedBy: effectiveUserId,
+          details: `Edited sale ${sale.invoiceNumber}: total ${sale.grandTotal} -> ${grandTotal}`,
+        },
+      });
+    } catch (auditErr) {
+      console.warn("Audit log creation skipped:", auditErr.message);
+    }
+
+    return updated;
+  });
+};
+
+/*
+|--------------------------------------------------------------------------
 | UPDATE SALE (BASIC)
 |--------------------------------------------------------------------------
 */
 
-const updateSale = async (id, payload) => {
+const updateSale = async (id, payload, userId) => {
   const sale = await prisma.sale.findUnique({
     where: { id },
   });
 
   if (!sale) {
     throw new Error("Sale not found");
+  }
+
+  // Confirmed sale edited for items/amounts -> reconcile stock, totals & customer stats
+  if (Array.isArray(payload.items)) {
+    return await updateSaleWithItems(id, payload, userId);
   }
 
   return await prisma.sale.update({

@@ -200,7 +200,22 @@ const deleteB2BOrder = async (req, res) => {
   }
 };
 
+/*
+|--------------------------------------------------------------------------
+| EDIT B2B ORDER (customer: own order before shipping, staff: any order)
+|--------------------------------------------------------------------------
+*/
+const updateB2BOrder = async (req, res) => {
+  try {
+    const result = await portalService.updateOrder(req.params.id, req.body, req.user);
+    return successResponse(res, result, "Order updated successfully");
+  } catch (error) {
+    return handleControllerError(res, error);
+  }
+};
+
 module.exports = {
+  updateB2BOrder,
   loginCustomer,
   registerCustomer,
   googleAuthCustomer,

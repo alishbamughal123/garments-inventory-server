@@ -95,7 +95,7 @@ const removeSale = async (req, res) => {
 
 const updateSaleHandler = async (req, res) => {
   try {
-    const result = await updateSale(req.params.id, req.body);
+    const result = await updateSale(req.params.id, req.body, req.user?.id);
     return successResponse(res, result, "Sale updated successfully");
   } catch (error) {
     return handleControllerError(res, error);
